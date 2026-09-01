@@ -143,9 +143,7 @@
         
         <div class="card" id="login-card">
             <h3>בחר משתמש לכניסה:</h3>
-            <div class="user-select-grid" id="login-user-grid">
-                <!-- יתמלא דינמית -->
-            </div>
+            <div class="user-select-grid" id="login-user-grid"></div>
             <button class="user-btn" style="width:100%; margin-top:5px;" onclick="selectUser('parent')">הורים 🔒</button>
             <button style="background-color: var(--warning); margin-top: 15px;" onclick="resetAllData()">איפוס כללי (למקרה חירום)</button>
         </div>
@@ -169,7 +167,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV13')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV14')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -202,7 +200,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV13', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV14', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -223,7 +221,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV13');
+                localStorage.removeItem('familyPointsDataV14');
                 location.reload();
             }
         }
@@ -316,7 +314,6 @@
                     html += `</div>`;
                 }
 
-                // אזור הגדרות סגור לקודים אישיים וניהול ילדים
                 html += `
                     <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSettingsPanel()">
@@ -359,7 +356,6 @@
                         </div>
                     </div>
 
-                    <!-- מעקב היסטוריות לפי ילד -->
                     <div class="card">
                         <h3 style="margin-top:0;">📊 מעקב היסטוריות ובקשות לפי ילד:</h3>
                         <label style="font-size:0.9rem; color:var(--text-light);">בחר ילד לצפייה בהיסטוריה:</label>
@@ -377,7 +373,6 @@
                         </div>
                     </div>
 
-                    <!-- משימת בונוס / הודעת מוטיבציה -->
                     <div class="card" style="background: #fefce8; border-color: #fde047;">
                         <h3 style="margin-top:0;">🌟 משימת בונוס / הודעת מוטיבציה:</h3>
                         <textarea id="bonus-msg-text" rows="3" placeholder="למשל: מי שיגיע ל-15 נקודות עד סוף השבוע יקבל בונוס!">${appData.bonusMessage.text || ''}</textarea>
@@ -389,7 +384,6 @@
                         </div>
                     </div>
 
-                    <!-- הענקת נקודות למטלה -->
                     <div class="card">
                         <label style="font-size:0.9rem; color:var(--text-light);">בחר ילד להענקת נקודות:</label>
                         <select id="award-child">
@@ -416,17 +410,15 @@
                         <button onclick="awardTaskToChild()">הענק נקודות לילד</button>
                     </div>
 
-                    <!-- הוספת מטלה חדשה למאגר -->
                     <div class="card">
                         <h3 style="margin-top:0;">הוספת מטלה חדשה למאגר</h3>
                         <label style="font-size:0.9rem; color:var(--text-light);">שם המטלה:</label>
-                        <input type="text" id="new-task-title" placeholder="למשל: פינוי מדיח">
+                        <input type="text" id="task-title-input" placeholder="למשל: פינוי מדיח">
                         <label style="font-size:0.9rem; color:var(--text-light);">ערך נקודות:</label>
-                        <input type="number" id="new-task-pts" placeholder="2">
+                        <input type="number" id="task-pts-input" placeholder="2">
                         <button onclick="addNewTask()">הוסף מטלה למאגר</button>
                     </div>
 
-                    <!-- מאגר מטלות קיימות -->
                     <div class="card">
                         <h3 style="margin-top:0;">מאגר מטלות קיימות:</h3>
                 `;
@@ -621,8 +613,8 @@
         }
 
         function addNewTask() {
-            const title = document.getElementById('new-task-title').value.trim();
-            const pts = parseInt(document.getElementById('new-task-pts').value);
+            const title = document.getElementById('task-title-input').value.trim();
+            const pts = parseInt(document.getElementById('task-pts-input').value);
             if (!title || isNaN(pts)) {
                 alert('נא למלא את שם המטלה וערך הנקודות.');
                 return;
