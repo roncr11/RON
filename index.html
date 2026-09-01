@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול נקודות משפחתי</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 24px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+        .name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .points {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            margin-bottom: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        .hidden {
+            display: none;
+        }
+        .toggle-btn {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            margin-top: 10px;
+        }
+        .toggle-btn:hover {
+            background: #e0e7ff;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏆 דירוג הניקוד המשפחתי</h1>
+
+    <!-- Leaderboard View -->
+    <div class="card">
+        <h3>לוח המובילים</h3>
+        <div id="leaderboardList"></div>
+    </div>
+
+    <!-- Parent Section Toggle -->
+    <div class="card">
+        <div id="loginSection">
+            <h3>אזור הורים</h3>
+            <label for="password">הכנס קוד סיסמה (ברירת מחדל: 1234):</label>
+            <input type="password" id="password" placeholder="קוד סיסמה">
+            <button onclick="parentLogin()">כניסה לניהול</button>
+        </div>
+
+        <div id="adminSection" class="hidden">
+            <h3>ניהול נקודות (הורים)</h3>
+            
+            <label for="selectKid">בחר ילד:</label>
+            <select id="selectKid">
+                <option value="אלון">אלון</option>
+                <option value="אורי">אורי</option>
+                <option value="אופיר">אופיר</option>
+            </select>
+
+            <label for="selectTask">בחר מטלה:</label>
+            <select id="selectTask">
+                <option value="סידור חדר (3 נקודות)">סידור חדר (3 נקודות)</option>
+                <option value="הכנת שיעורים (2 נקודות)">הכנת שיעורים (2 נקודות)</option>
+                <option value="עזרה בהדחת כלים (1 נקודות)">עזרה בהדחת כלים (1 נקודות)</option>
+                <option value="הימנעות ממסכים בערב (4 נקודות)">הימנעות ממסכים בערב (4 נקודות)</option>
+            </select>
+
+            <button onclick="addPoints()">הוסף נקודות לילד</button>
+            <button class="toggle-btn" onclick="parentLogout()">יציאה ממצב הורה</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initial data setup in LocalStorage if not exists
+    let defaultScores = {
+        "אלון": 0,
+        "אורי": 0,
+        "אופיר": 0
+    };
+
+    function getScores() {
+        let scores = localStorage.getItem('family_scores');
+        return scores ? JSON.parse(scores) : defaultScores;
+    }
+
+    function saveScores(scores) {
+        localStorage.setItem('family_scores', JSON.stringify(scores));
+    }
+
+    function renderLeaderboard() {
+        let scores = getScores();
+        let listContainer = document.getElementById('leaderboardList');
+        listContainer.innerHTML = '';
+
+        // Sort kids by points descending
+        let sortedKids = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+
+        sortedKids.forEach(kid => {
+            let item = document.createElement('div');
+            item.className = 'leaderboard-item';
+            item.innerHTML = `<span class="name">${kid}</span> <span class="points">${scores[kid]} נקודות</span>`;
+            listContainer.appendChild(item);
+        });
+    }
+
+    function parentLogin() {
+        let pass = document.getElementById('password').value;
+        if (pass === '1234') {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.remove('hidden');
+            document.getElementById('password').value = '';
+        } else {
+            alert('קוד סיסמה שגוי!');
+        }
+    }
+
+    function parentLogout() {
+        document.getElementById('adminSection').classList.add('hidden');
+        document.getElementById('loginSection').classList.remove('hidden');
+    }
+
+    function addPoints() {
+        let kid = document.getElementById('selectKid').value;
+        let taskElement = document.getElementById('selectTask');
+        let taskText = taskElement.value;
+        
+        // Extract points from string (e.g., "(3 נקודות)")
+        let pointsMatch = taskText.match(/\((\d+)/);
+        let pointsToAdd = pointsMatch ? parseInt(pointsMatch[1]) : 1;
+
+        let scores = getScores();
+        scores[kid] = (scores[kid] || 0) + pointsToAdd;
+        saveScores(scores);
+
+        renderLeaderboard();
+        alert(`נוספו בהצלחה ${pointsToAdd} נקודות ל-${kid}!`);
+    }
+
+    // Initial render on load
+    renderLeaderboard();
+</script>
+
+</body>
+</html>
