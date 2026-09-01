@@ -168,7 +168,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV18')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV19')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -201,7 +201,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV18', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV19', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -222,7 +222,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV18');
+                localStorage.removeItem('familyPointsDataV19');
                 location.reload();
             }
         }
@@ -661,11 +661,12 @@
         }
 
         function addNewTask() {
-            const titleEl = document.getElementById('new-task-title') || document.getElementById('task-title-input');
-            const ptsEl = document.getElementById('new-task-pts') || document.getElementById('task-pts-input');
-            if (!titleEl || !ptsEl) return;
-            const title = titleEl.value.trim();
-            const pts = parseInt(ptsEl.value);
+            const titleEl = document.getElementById('new-task-title');
+            const ptsEl = document.getElementById('new-task-pts');
+            
+            const title = titleEl ? titleEl.value.trim() : '';
+            const pts = ptsEl ? parseInt(ptsEl.value) : NaN;
+
             if (!title || isNaN(pts)) {
                 alert('נא למלא את שם המטלה וערך הנקודות.');
                 return;
@@ -759,16 +760,13 @@
             if (child.points < req.amount) {
                 alert('לשחקן אין מספיק נקודות כרגע.');
                 appData.redemptionRequests.splice(index, 1);
-                saveData();
-                renderDashboard();
-                return;
+            } else {
+                child.points -= req.amount;
+                child.history.push({ text: `מימוש אושר: ${req.amount} נקודות עבור ${req.type} (${new Date().toLocaleDateString('he-IL')})`, tag: `-${req.amount} נק'` });
+                appData.redemptionRequests.splice(index, 1);
+                alert('המימוש אושר והנקודות ירדו מיתרת הילד.');
             }
-
-            child.points -= req.amount;
-            child.history.push({ text: `מימוש אושר: ${req.amount} נקודות עבור ${req.type} (${new Date().toLocaleDateString('he-IL')})`, tag: `-${req.amount} נק'` });
-            appData.redemptionRequests.splice(index, 1);
             saveData();
-            alert('המימוש אושר והנקודות ירדו מיתרת הילד.');
             renderDashboard();
         }
 
