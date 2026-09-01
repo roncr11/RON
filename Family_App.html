@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<!-- אייקון שיופיע על מסך הבית בפלאפון -->
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+<link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+<!-- הגדרות שגורמות לאפליקציה להיפתח במסך מלא בלי שורת כתובת של דפדפן -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="נקודות משפחה">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול נקודות משפחתי</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 24px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .leaderboard-item, .history-item, .request-item, .pin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .leaderboard-item:last-child, .history-item:last-child, .request-item:last-child, .pin-item:last-child {
+            border-bottom: none;
+        }
+        .name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .points {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: background 0.2s;
+            margin-top: 5px;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        .delete-btn {
+            background-color: var(--danger);
+            width: auto;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        .edit-btn {
+            background-color: #0ea5e9;
+            width: auto;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        .success-btn {
+            background-color: var(--success);
+            width: auto;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            margin-bottom: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        .hidden {
+            display: none;
+        }
+        .toggle-btn {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            margin-top: 15px;
+        }
+        .badge {
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            margin-right: 6px;
+        }
+        .disclaimer {
+            background: #f1f5f9;
+            border-right: 4px solid var(--primary);
+            padding: 10px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .bonus-banner {
+            background: linear-gradient(135deg, #f59e0b, #ec4899, #8b5cf6);
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: pulseGlow 2s infinite alternate;
+        }
+        @keyframes pulseGlow {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.01); }
+        }
+        .bonus-banner::before {
+            content: "✨ 🌟 🎊 🎉 🌟 ✨";
+            display: block;
+            font-size: 1.2rem;
+            margin-bottom: 6px;
+            letter-spacing: 5px;
+        }
+        .bonus-time-info {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin-top: 6px;
+            font-weight: normal;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 20px 0;
+        }
+        .task-accordion-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .task-accordion-header {
+            padding: 12px 16px;
+            background: #f1f5f9;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+        .task-accordion-content {
+            padding: 15px;
+            display: none;
+            border-top: 1px solid #e2e8f0;
+            background: #fafafa;
+        }
+        .task-accordion-content.open {
+            display: block;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .nav-tabs button {
+            margin-top: 0;
+            background: #cbd5e1;
+            color: #334155;
+        }
+        .nav-tabs button.active {
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏆 דירוג הניקוד המשפחתי</h1>
+
+    <!-- Main Navigation / Portal Switcher -->
+    <div class="card" id="portalSwitcher">
+        <h3>בחר אופן כניסה:</h3>
+        <div class="nav-tabs">
+            <button class="active" onclick="switchView('leaderboard')">לוח דירוג וילדים</button>
+            <button onclick="switchView('parent')">אזור הורים</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard & Kids View -->
+    <div id="kidsViewSection">
+        <div id="displayBonusBanner" class="bonus-banner hidden"></div>
+
+        <div class="card">
+            <h3>לוח המובילים</h3>
+            <div id="leaderboardList"></div>
+        </div>
+
+        <div class="card">
+            <h3>כניסת ילדים אישית</h3>
+            <label for="selectLoginKid">בחר את שמך:</label>
+            <select id="selectLoginKid">
+                <option value="אלון">אלון</option>
+                <option value="אורי">אורי</option>
+                <option value="אופיר">אופיר</option>
+            </select>
+            
+            <label for="kidPasswordInput">קוד אישי (4 ספרות):</label>
+            <input type="password" id="kidPasswordInput" maxlength="4" placeholder="הקלד קוד בן 4 ספרות">
+
+            <button onclick="kidLogin()">כניסה לאזור האישי שלי</button>
+        </div>
+    </div>
+
+    <!-- Kid Personal Dashboard -->
+    <div id="kidDashboardSection" class="card hidden">
+        <h3 id="kidWelcomeTitle">האזור האישי</h3>
+        
+        <div id="displayKidBonusBanner" class="bonus-banner hidden"></div>
+
+        <div style="font-size: 1.2rem; margin-bottom: 15px;">היתרה שלך: <b id="kidMyPoints" style="color:var(--primary)">0</b> נקודות</div>
+        
+        <div class="disclaimer">
+            💡 <b>שימו לב:</b> נקודה אחת שווה <b>5 שקלים</b> או <b>10 דקות מסך</b>!
+        </div>
+
+        <!-- Redeem Section -->
+        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+            <label for="redeemAmount">כמות נקודות למימוש (מינימום 4):</label>
+            <input type="number" id="redeemAmount" min="4" value="4">
+
+            <label for="redeemType">צורת מימוש מועדפת:</label>
+            <select id="redeemType">
+                <option value="כסף (5 ₪ לנקודה)">כסף (5 ₪ לכל נקודה)</option>
+                <option value="זמן מסך (10 דקות לנקודה)">זמן מסך (10 דקות לכל נקודה)</option>
+            </select>
+
+            <button onclick="requestRedeem()" style="background-color: var(--warning);">הגש בקשת מימוש להורים</button>
+        </div>
+
+        <!-- Change PIN Section -->
+        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px;">
+            <label for="newKidPinInput">שינוי קוד אישי (4 ספרות חדשות):</label>
+            <input type="password" id="newKidPinInput" maxlength="4" placeholder="הכנס קוד חדש">
+            <button class="edit-btn" onclick="changeKidPin()" style="width:100%; margin-top:0;">עדכן קוד אישי</button>
+        </div>
+
+        <h4>ההיסטוריה שלי:</h4>
+        <div id="kidHistoryList" style="border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px;"></div>
+
+        <button class="toggle-btn" onclick="backToMain()">חזרה לדף הראשי</button>
+    </div>
+
+    <!-- Parent Section -->
+    <div id="parentSection" class="card hidden">
+        <div id="loginSection">
+            <h3>כניסת הורים</h3>
+            <label for="password">הכנס קוד סיסמה (ברירת מחדל: 1234):</label>
+            <input type="password" id="password" placeholder="קוד סיסמה">
+            <button onclick="parentLogin()">כניסה לניהול</button>
+            <button class="toggle-btn" onclick="switchView('leaderboard')">חזרה לדף הראשי</button>
+        </div>
+
+        <div id="adminSection" class="hidden">
+            <h3>ניהול נקודות ומטלות <span id="notificationBadge" class="hidden badge">0</span></h3>
+            
+            <!-- Pending Requests Section (Moved to Top for instant visibility) -->
+            <div id="requestsContainer" class="hidden" style="background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin-top:0; color: #b45309;">🚨 בקשות מימוש ממתינות לאישור:</h4>
+                <div id="pendingRequestsList"></div>
+            </div>
+
+            <!-- Kids PINs Management View -->
+            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin-top:0; color: #334155;">🔑 קודים אישיים של הילדים (למקרה ושכחו):</h4>
+                <div id="parentPinsList"></div>
+            </div>
+
+            <!-- Parent View Kid History -->
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin-top:0; color: #334155;">📊 מעקב היסטוריות ובקשות לפי ילד:</h4>
+                <label for="selectHistoryKid">בחר ילד לצפייה בהיסטוריה:</label>
+                <select id="selectHistoryKid" onchange="renderParentKidHistory()">
+                    <option value="אלון">אלון</option>
+                    <option value="אורי">אורי</option>
+                    <option value="אופיר">אופיר</option>
+                </select>
+                <div id="parentKidHistoryList" style="border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; margin-top: 10px; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+
+            <!-- Bonus Message Management -->
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin-top:0; color: #b45309;">🌟 משימת בונוס / הודעת מוטיבציה:</h4>
+                <textarea id="bonusTextInput" rows="2" placeholder="למשל: מי שיגיע ל-15 נקודות עד סוף השבוע יקבל בונוס!"></textarea>
+                
+                <label for="bonusTimeInput" style="font-size: 0.85rem;">תזמון הצגה (הצג החל מתאריך ושעה):</label>
+                <input type="datetime-local" id="bonusTimeInput">
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="success-btn" onclick="saveBonusMessage()" style="flex:1; margin-top:0;">שמור / עדכן הודעה</button>
+                    <button class="delete-btn" onclick="deleteBonusMessage()" style="margin-top:0;">מחק הודעה</button>
+                </div>
+            </div>
+
+            <label for="selectKid">בחר ילד להענקת נקודות:</label>
+            <select id="selectKid">
+                <option value="אלון">אלון</option>
+                <option value="אורי">אורי</option>
+                <option value="אופיר">אופיר</option>
+            </select>
+
+            <label for="selectTask">בחר מטלה לביצוע:</label>
+            <select id="selectTask"></select>
+
+            <button onclick="addPoints()">הענק נקודות לילד</button>
+
+            <hr>
+
+            <h4>הוספת מטלה חדשה למאגר</h4>
+            <label for="newTaskName">שם המטלה:</label>
+            <input type="text" id="newTaskName" placeholder="למשל: פינוי מדיח">
+
+            <label for="newTaskPoints">ערך נקודות:</label>
+            <input type="number" id="newTaskPoints" value="2" min="1">
+
+            <button onclick="addNewTask()">הוסף מטלה למאגר</button>
+
+            <div style="margin-top: 20px;">
+                <label>מאגר מטלות קיימות:</label>
+                <div id="tasksAccordionList" style="margin-top: 8px;"></div>
+            </div>
+
+            <button class="toggle-btn" onclick="parentLogout()">יציאה ממצב הורה</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let defaultScores = { "אלון": 0, "אורי": 0, "אופיר": 0 };
+    let defaultTasks = [
+        { name: "סידור חדר", points: 3 },
+        { name: "הכנת שיעורים", points: 2 },
+        { name: "עזרה בהדחת כלים", points: 1 },
+        { name: "הימנעות ממסכים בערב", points: 4 }
+    ];
+
+    function getScores() {
+        let scores = localStorage.getItem('family_scores');
+        return scores ? JSON.parse(scores) : defaultScores;
+    }
+
+    function saveScores(scores) {
+        localStorage.setItem('family_scores', JSON.stringify(scores));
+    }
+
+    function getTasks() {
+        let tasks = localStorage.getItem('family_tasks');
+        return tasks ? JSON.parse(tasks) : defaultTasks;
+    }
+
+    function saveTasks(tasks) {
+        localStorage.setItem('family_tasks', JSON.stringify(tasks));
+    }
+
+    function getHistory() {
+        let history = localStorage.getItem('family_history');
+        return history ? JSON.parse(history) : [];
+    }
+
+    function saveHistory(history) {
+        localStorage.setItem('family_history', JSON.stringify(history));
+    }
+
+    function getRequests() {
+        let reqs = localStorage.getItem('family_requests');
+        return reqs ? JSON.parse(reqs) : [];
+    }
+
+    function saveRequests(reqs) {
+        localStorage.setItem('family_requests', JSON.stringify(reqs));
+    }
+
+    function getKidPins() {
+        let pins = localStorage.getItem('family_kid_pins');
+        return pins ? JSON.parse(pins) : {};
+    }
+
+    function saveKidPins(pins) {
+        localStorage.setItem('family_kid_pins', JSON.stringify(pins));
+    }
+
+    function getBonusData() {
+        let data = localStorage.getItem('family_bonus_data');
+        return data ? JSON.parse(data) : { text: "", time: "" };
+    }
+
+    function saveBonusMessage() {
+        let text = document.getElementById('bonusTextInput').value.trim();
+        let time = document.getElementById('bonusTimeInput').value;
+
+        if (!text) {
+            alert('נא להזין טקסט להודעה');
+            return;
+        }
+
+        let bonusObj = { text: text, time: time };
+        localStorage.setItem('family_bonus_data', JSON.stringify(bonusObj));
+        alert('הודעת הבונוס עודכנה ותוצג בזמן המיועד!');
+        renderBonusBanner();
+    }
+
+    function deleteBonusMessage() {
+        if (confirm('האם אתה בטוח שברצונך למחוק את הודעת הבונוס?')) {
+            localStorage.removeItem('family_bonus_data');
+            document.getElementById('bonusTextInput').value = '';
+            document.getElementById('bonusTimeInput').value = '';
+            renderBonusBanner();
+            alert('ההודעה נמחקה בהצלחה.');
+        }
+    }
+
+    function renderBonusBanner() {
+        let bonus = getBonusData();
+        let banner1 = document.getElementById('displayBonusBanner');
+        let banner2 = document.getElementById('displayKidBonusBanner');
+
+        if (!bonus.text) {
+            banner1.classList.add('hidden');
+            banner2.classList.add('hidden');
+            return;
+        }
+
+        if (bonus.time) {
+            let scheduledTime = new Date(bonus.time).getTime();
+            let now = new Date().getTime();
+            if (now < scheduledTime) {
+                banner1.classList.add('hidden');
+                banner2.classList.add('hidden');
+                return;
+            }
+        }
+
+        let timeFormatted = bonus.time ? `<div class="bonus-time-info">⏰ פעיל החל מתאריך: ${new Date(bonus.time).toLocaleString('he-IL')}</div>` : "";
+        let contentHTML = `<div>${bonus.text}</div>${timeFormatted}`;
+
+        banner1.innerHTML = contentHTML;
+        banner1.classList.remove('hidden');
+        banner2.innerHTML = contentHTML;
+        banner2.classList.remove('hidden');
+    }
+
+    function switchView(view) {
+        document.getElementById('kidsViewSection').classList.add('hidden');
+        document.getElementById('kidDashboardSection').classList.add('hidden');
+        document.getElementById('parentSection').classList.add('hidden');
+        document.getElementById('portalSwitcher').classList.remove('hidden');
+
+        if (view === 'leaderboard') {
+            document.getElementById('kidsViewSection').classList.remove('hidden');
+            renderLeaderboard();
+            renderBonusBanner();
+            document.getElementById('kidPasswordInput').value = '';
+        } else if (view === 'parent') {
+            document.getElementById('parentSection').classList.remove('hidden');
+            let bonus = getBonusData();
+            document.getElementById('bonusTextInput').value = bonus.text;
+            document.getElementById('bonusTimeInput').value = bonus.time;
+            renderParentPinsList();
+            renderPendingRequests();
+            renderParentKidHistory();
+        }
+    }
+
+    function renderLeaderboard() {
+        let scores = getScores();
+        let listContainer = document.getElementById('leaderboardList');
+        listContainer.innerHTML = '';
+
+        let sortedKids = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+
+        sortedKids.forEach(kid => {
+            let item = document.createElement('div');
+            item.className = 'leaderboard-item';
+            item.innerHTML = `<span class="name">${kid}</span> <span class="points">${scores[kid]} נקודות</span>`;
+            listContainer.appendChild(item);
+        });
+    }
+
+    let currentLoggedInKid = "";
+
+    function kidLogin() {
+        let kidName = document.getElementById('selectLoginKid').value;
+        let enteredPin = document.getElementById('kidPasswordInput').value.trim();
+
+        if (!enteredPin || enteredPin.length !== 4 || isNaN(enteredPin)) {
+            alert('נא להכניס קוד אישי תקין בן 4 ספרות בלבד!');
+            return;
+        }
+
+        let pins = getKidPins();
+
+        if (!pins[kidName]) {
+            pins[kidName] = enteredPin;
+            saveKidPins(pins);
+            alert(`הקוד האישי שלך נקבע בהצלחה ל-${kidName}!`);
+        } else {
+            if (pins[kidName] !== enteredPin) {
+                alert('קוד אישי שגוי!');
+                return;
+            }
+        }
+
+        currentLoggedInKid = kidName;
+        document.getElementById('portalSwitcher').classList.add('hidden');
+        document.getElementById('kidsViewSection').classList.add('hidden');
+        document.getElementById('kidDashboardSection').classList.remove('hidden');
+
+        document.getElementById('kidWelcomeTitle').textContent = `האזור האישי של ${currentLoggedInKid}`;
+        let scores = getScores();
+        let currentPoints = scores[currentLoggedInKid] || 0;
+        document.getElementById('kidMyPoints').textContent = currentPoints;
+        document.getElementById('redeemAmount').value = Math.max(4, currentPoints);
+        document.getElementById('newKidPinInput').value = '';
+
+        renderBonusBanner();
+        renderKidHistory();
+    }
+
+    function changeKidPin() {
+        let newPin = document.getElementById('newKidPinInput').value.trim();
+        if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
+            alert('נא להכניס קוד חדש תקין בן 4 ספרות בלבד!');
+            return;
+        }
+
+        let pins = getKidPins();
+        pins[currentLoggedInKid] = newPin;
+        saveKidPins(pins);
+        document.getElementById('newKidPinInput').value = '';
+        alert('הקוד האישי עודכן בהצלחה!');
+    }
+
+    function backToMain() {
+        switchView('leaderboard');
+    }
+
+    function renderKidHistory() {
+        let history = getHistory();
+        let list = document.getElementById('kidHistoryList');
+        list.innerHTML = '';
+
+        let kidHistory = history.filter(h => h.kid === currentLoggedInKid);
+
+        if (kidHistory.length === 0) {
+            list.innerHTML = '<div style="padding: 12px; color: #64748b; text-align: center;">עדיין אין היסטוריית פעילויות</div>';
+            return;
+        }
+
+        kidHistory.reverse().forEach(h => {
+            let div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `<span>${h.text} (${h.date})</span> <b style="color:var(--success);">+${h.points} נק'</b>`;
+            list.appendChild(div);
+        });
+    }
+
+    function renderParentKidHistory() {
+        let selectedKid = document.getElementById('selectHistoryKid').value;
+        let history = getHistory();
+        let list = document.getElementById('parentKidHistoryList');
+        list.innerHTML = '';
+
+        let kidHistory = history.filter(h => h.kid === selectedKid);
+
+        if (kidHistory.length === 0) {
+            list.innerHTML = '<div style="padding: 12px; color: #64748b; text-align: center;">אין היסטוריית מטלות לילד זה</div>';
+            return;
+        }
+
+        kidHistory.reverse().forEach(h => {
+            let div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `<span>${h.text} (${h.date})</span> <b style="color:var(--success);">+${h.points} נק'</b>`;
+            list.appendChild(div);
+        });
+    }
+
+    function requestRedeem() {
+        let scores = getScores();
+        let currentPoints = scores[currentLoggedInKid] || 0;
+        let redeemVal = parseInt(document.getElementById('redeemAmount').value);
+        let redeemType = document.getElementById('redeemType').value;
+
+        if (isNaN(redeemVal) || redeemVal < 4) {
+            alert('מינימום להגשת בקשה הוא 4 נקודות!');
+            return;
+        }
+
+        if (redeemVal > currentPoints) {
+            alert('אתה מנסה לבקש יותר נקודות ממה שיש לך ביתרה!');
+            return;
+        }
+
+        let requests = getRequests();
+        requests.push({
+            id: Date.now(),
+            kid: currentLoggedInKid,
+            points: redeemVal,
+            type: redeemType,
+            date: new Date().toLocaleDateString('he-IL')
+        });
+        saveRequests(requests);
+
+        alert(`הבקשה למימוש ${redeemVal} נקודות (${redeemType}) נשלחה בהצלחה להורים!`);
+        checkNotifications();
+    }
+
+    function parentLogin() {
+        let pass = document.getElementById('password').value;
+        if (pass === '1234') {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.remove('hidden');
+            document.getElementById('password').value = '';
+            let bonus = getBonusData();
+            document.getElementById('bonusTextInput').value = bonus.text;
+            document.getElementById('bonusTimeInput').value = bonus.time;
+            renderParentPinsList();
+            renderTasksDropdownAndManagement();
+            renderPendingRequests();
+            renderParentKidHistory();
+            checkNotifications();
+        } else {
+            alert('קוד סיסמה שגוי!');
+        }
+    }
+
+    function parentLogout() {
+        document.getElementById('adminSection').classList.add('hidden');
+        document.getElementById('loginSection').classList.remove('hidden');
+        switchView('leaderboard');
+    }
+
+    function renderParentPinsList() {
+        let pins = getKidPins();
+        let listContainer = document.getElementById('parentPinsList');
+        listContainer.innerHTML = '';
+
+        let kids = ["אלון", "אורי", "אופיר"];
+        kids.forEach(kid => {
+            let kidPin = pins[kid] || "טרם הוגדר";
+            let div = document.createElement('div');
+            div.className = 'pin-item';
+            div.innerHTML = `<span><b>${kid}</b></span> <span class="points" style="background:#e2e8f0; color:#334155;">${kidPin}</span>`;
+            listContainer.appendChild(div);
+        });
+    }
+
+    function checkNotifications() {
+        let requests = getRequests();
+        let badge = document.getElementById('notificationBadge');
+        if (requests.length > 0) {
+            badge.textContent = requests.length;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    function renderPendingRequests() {
+        let requests = getRequests();
+        let container = document.getElementById('requestsContainer');
+        let list = document.getElementById('pendingRequestsList');
+        list.innerHTML = '';
+
+        if (requests.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        requests.forEach((req, index) => {
+            let div = document.createElement('div');
+            div.className = 'request-item';
+            div.innerHTML = `
+                <span><b>${req.kid}</b> מבקש <b>${req.points} נק'</b> (${req.type}) - ${req.date}</span>
+                <div style="display: flex; gap: 5px;">
+                    <button class="success-btn" onclick="approveRequest(${index})" style="margin-top:0;">אישור</button>
+                    <button class="delete-btn" onclick="cancelRequest(${index})" style="margin-top:0;">ביטול בקשה</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function approveRequest(index) {
+        let requests = getRequests();
+        let req = requests[index];
+
+        let scores = getScores();
+        scores[req.kid] = Math.max(0, (scores[req.kid] || 0) - req.points);
+        saveScores(scores);
+
+        requests.splice(index, 1);
+        saveRequests(requests);
+
+        renderPendingRequests();
+        checkNotifications();
+        renderLeaderboard();
+        alert(`הבקשה של ${req.kid} אושרה (${req.points} נקודות ירדו מהיתרה)!`);
+    }
+
+    function cancelRequest(index) {
+        let requests = getRequests();
+        let req = requests[index];
+
+        if (confirm(`האם אתה בטוח שברצונך לבטל את הבקשה של ${req.kid}?`)) {
+            requests.splice(index, 1);
+            saveRequests(requests);
+            renderPendingRequests();
+            checkNotifications();
+            alert('הבקשה בוטלה בהצלחה.');
+        }
+    }
+
+    function renderTasksDropdownAndManagement() {
+        let tasks = getTasks();
+        let selectTask = document.getElementById('selectTask');
+        selectTask.innerHTML = '';
+        let accordionList = document.getElementById('tasksAccordionList');
+        accordionList.innerHTML = '';
+
+        tasks.forEach((task, index) => {
+            let opt = document.createElement('option');
+            opt.value = index;
+            opt.textContent = `${task.name} (${task.points} נקודות)`;
+            selectTask.appendChild(opt);
+
+            let itemDiv = document.createElement('div');
+            itemDiv.className = 'task-accordion-item';
+            
+            let headerDiv = document.createElement('div');
+            headerDiv.className = 'task-accordion-header';
+            headerDiv.innerHTML = `<span>${task.name}</span> <span class="points">${task.points} נק'</span>`;
+            headerDiv.onclick = () => {
+                let content = document.getElementById(`task-content-${index}`);
+                content.classList.toggle('open');
+            };
+
+            let contentDiv = document.createElement('div');
+            contentDiv.className = 'task-accordion-content';
+            contentDiv.id = `task-content-${index}`;
+            contentDiv.innerHTML = `
+                <label>שם המטלה:</label>
+                <input type="text" id="edit-name-${index}" value="${task.name}">
+                <label>כמות נקודות:</label>
+                <input type="number" id="edit-points-${index}" value="${task.points}" min="1">
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="edit-btn" onclick="updateTask(${index})" style="flex:1; margin-top:0;">שמור שינויים</button>
+                    <button class="delete-btn" onclick="deleteTask(${index})">מחיקה</button>
+                </div>
+            `;
+
+            itemDiv.appendChild(headerDiv);
+            itemDiv.appendChild(contentDiv);
+            accordionList.appendChild(itemDiv);
+        });
+    }
+
+    function addPoints() {
+        let kid = document.getElementById('selectKid').value;
+        let taskIndex = document.getElementById('selectTask').value;
+        let tasks = getTasks();
+
+        if (taskIndex === "" || !tasks[taskIndex]) {
+            alert('נא לבחור מטלה תקינה');
+            return;
+        }
+
+        let selectedTask = tasks[taskIndex];
+        let scores = getScores();
+        scores[kid] = (scores[kid] || 0) + selectedTask.points;
+        saveScores(scores);
+
+        let history = getHistory();
+        history.push({
+            kid: kid,
+            text: selectedTask.name,
+            points: selectedTask.points,
+            date: new Date().toLocaleDateString('he-IL')
+        });
+        saveHistory(history);
+
+        renderLeaderboard();
+        renderParentKidHistory();
+        alert(`נוספו בהצלחה ${selectedTask.points} נקודות ל-${kid} עבור "${selectedTask.name}"!`);
+    }
+
+    function addNewTask() {
+        let name = document.getElementById('newTaskName').value.trim();
+        let points = parseInt(document.getElementById('newTaskPoints').value);
+
+        if (!name || isNaN(points) || points <= 0) {
+            alert('נא להכניס שם מטלה וערך נקודות תקין');
+            return;
+        }
+
+        let tasks = getTasks();
+        tasks.push({ name: name, points: points });
+        saveTasks(tasks);
+
+        document.getElementById('newTaskName').value = '';
+        document.getElementById('newTaskPoints').value = '2';
+        renderTasksDropdownAndManagement();
+        alert('המטלה נוספה בהצלחה למאגר!');
+    }
+
+    function updateTask(index) {
+        let name = document.getElementById(`edit-name-${index}`).value.trim();
+        let points = parseInt(document.getElementById(`edit-points-${index}`).value);
+
+        if (!name || isNaN(points) || points <= 0) {
+            alert('נא להכניס ערכים תקינים');
+            return;
+        }
+
+        let tasks = getTasks();
+        tasks[index].name = name;
+        tasks[index].points = points;
+        saveTasks(tasks);
+
+        renderTasksDropdownAndManagement();
+        alert('המטלה עודכנה בהצלחה!');
+    }
+
+    function deleteTask(index) {
+        let tasks = getTasks();
+        if (tasks.length <= 1) {
+            alert('חייבת להישאר לפחות מטלה אחת במאגר.');
+            return;
+        }
+
+        if (confirm(`האם אתה בטוח שברצונך למחוק את המטלה "${tasks[index].name}"?`)) {
+            tasks.splice(index, 1);
+            saveTasks(tasks);
+            renderTasksDropdownAndManagement();
+        }
+    }
+
+    renderLeaderboard();
+    renderBonusBanner();
+    checkNotifications();
+</script>
+
+</body>
+</html>
