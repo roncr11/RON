@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <!-- אייקון שיופיע על מסך הבית בפלאפון -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-
-    <!-- הגדרות שרוטמות לאפליקציה להיפתח במסך מלא בלי שורת כתובת של דפדפן -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="נקודות משפחתי">
@@ -29,7 +26,7 @@
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             direction: rtl;
         }
         .container {
@@ -39,12 +36,13 @@
         h1 {
             text-align: center;
             color: var(--primary);
-            margin-bottom: 24px;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
         }
         .card {
             background: var(--card-bg);
             border-radius: 12px;
-            padding: 20px;
+            padding: 16px;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             margin-bottom: 16px;
         }
@@ -52,12 +50,12 @@
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 10px 16px;
+            padding: 12px 16px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
             width: 100%;
-            margin-top: 10px;
+            margin-top: 8px;
             font-size: 1rem;
         }
         button:hover {
@@ -65,8 +63,8 @@
         }
         input, select {
             width: 100%;
-            padding: 10px;
-            margin: 8px 0 16px 0;
+            padding: 12px;
+            margin: 6px 0 12px 0;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             box-sizing: border-box;
@@ -75,14 +73,14 @@
         .user-select-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 10px;
         }
         .user-btn {
             background: white;
             border: 2px solid var(--primary);
             color: var(--primary);
-            padding: 15px;
+            padding: 20px 10px;
             border-radius: 12px;
             font-weight: bold;
             font-size: 1.1rem;
@@ -95,7 +93,15 @@
         }
         .flex-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
+        }
+        .badge {
+            background: var(--danger);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -121,9 +127,9 @@
         </div>
 
         <div class="card" id="app-content" style="display: none;">
-            <h2 id="welcome-msg">ברוך הבא</h2>
+            <h2 id="welcome-msg" style="font-size: 1.3rem;">ברוך הבא</h2>
             <div id="dynamic-view"></div>
-            <button style="background-color: var(--danger); margin-top: 20px;" onclick="backToLogin()">התנתק</button>
+            <button style="background-color: var(--danger); margin-top: 25px;" onclick="backToLogin()">התנתק</button>
         </div>
     </div>
 
@@ -131,21 +137,22 @@
         let currentUser = null;
         const pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsData')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV2')) || {
             children: {
                 child1: { name: 'אלון', points: 50 },
                 child2: { name: 'אורי', points: 40 },
                 child3: { name: 'אופיר', points: 60 }
-            }
+            },
+            tasks: [
+                { id: 1, title: 'סידור חדר', points: 15 },
+                { id: 2, title: 'הכנת שיעורי בית', points: 20 },
+                { id: 3, title: 'עזרה בשטיפת כלים', points: 10 }
+            ],
+            requests: [] // בקשות של ילדים לאישור נקודות/פרסים
         };
 
-        // תיקון מבני לגיבוי שמות ברירת מחדל אם הם התאפסו ריקים
-        if(!appData.children.child1.name) appData.children.child1.name = 'אלון';
-        if(!appData.children.child2.name) appData.children.child2.name = 'אורי';
-        if(!appData.children.child3.name) appData.children.child3.name = 'אופיר';
-
         function saveData() {
-            localStorage.setItem('familyPointsData', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV2', JSON.stringify(appData));
             updateButtonNames();
         }
 
@@ -172,7 +179,7 @@
                 document.getElementById('app-content').style.display = 'block';
                 renderDashboard();
             } else {
-                alert('קוד שגוי, נסה שוב (קוד הורים הוא 9999).');
+                alert('קוד שגוי, נסה שוב.');
             }
         }
 
@@ -189,32 +196,72 @@
             const view = document.getElementById('dynamic-view');
 
             if (currentUser === 'parent') {
-                msg.innerText = 'לוח בקרה הורים 👨‍👩‍👧‍👦';
-                let html = `<h3>ניהול ילדים ונקודות:</h3>`;
+                msg.innerHTML = 'לוח בקרה הורים 👨‍👩‍👧‍👦';
+                
+                let html = `<div style="margin-bottom:20px;">
+                    <h3>ניהול ילדים ונקודות:</h3>`;
+                
                 for (let key in appData.children) {
                     let child = appData.children[key];
                     html += `
-                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px;">
-                            <label style="font-size:0.9rem; color:var(--text-light);">שם הילד:</label>
-                            <input type="text" id="name-${key}" value="${child.name}" onchange="updateChildName('${key}', this.value)">
-                            <strong>נקודות נוכחיות: <span id="pts-${key}">${child.points}</span></strong>
+                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:10px;">
+                            <label style="font-size:0.85rem; color:var(--text-light);">שם הילד:</label>
+                            <input type="text" value="${child.name}" onchange="updateChildName('${key}', this.value)">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                                <span>נקודות: <strong>${child.points}</strong></span>
+                            </div>
                             <div class="flex-row" style="margin-top:8px;">
-                                <button onclick="modifyPoints('${key}', 10)">+ 10</button>
-                                <button style="background-color:var(--danger);" onclick="modifyPoints('${key}', -10)">- 10</button>
+                                <button onclick="modifyPoints('${key}', 5)">+5</button>
+                                <button onclick="modifyPoints('${key}', 10)">+10</button>
+                                <button onclick="modifyPoints('${key}', 20)">+20</button>
+                                <button style="background-color:var(--danger);" onclick="modifyPoints('${key}', -10)">-10</button>
                             </div>
                         </div>
                     `;
                 }
+
+                // ניהול משימות והענקת בונוסים כלליים
+                html += `</div>
+                    <div style="border-top: 2px solid #e2e8f0; padding-top: 15px;">
+                        <h3>הוספת משימה חדשה למערכת:</h3>
+                        <input type="text" id="new-task-title" placeholder="שם המשימה (למשל: פינוי שולחן)">
+                        <input type="number" id="new-task-pts" placeholder="כמות נקודות">
+                        <button onclick="addNewTask()">הוסף משימה לרשימה</button>
+                    </div>
+                `;
+
                 view.innerHTML = html;
             } else {
                 let child = appData.children[currentUser];
                 msg.innerText = `שלום, ${child.name} 👋`;
-                view.innerHTML = `
-                    <div style="text-align:center; padding: 25px; background: #e0e7ff; border-radius: 12px;">
-                        <h3>יתרת הנקודות שלך:</h3>
+                
+                let html = `
+                    <div style="text-align:center; padding: 20px; background: #e0e7ff; border-radius: 12px; margin-bottom: 20px;">
+                        <h3 style="margin:0 0 10px 0;">יתרת הנקודות שלך:</h3>
                         <p style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 0;">${child.points}</p>
                     </div>
+                    <h3>משימות זמינות לצבירת נקודות:</h3>
+                    <div id="tasks-list">
                 `;
+
+                if (appData.tasks.length === 0) {
+                    html += `<p style="color:var(--text-light);">אין משימות זמינות כרגע.</p>`;
+                } else {
+                    appData.tasks.forEach((task, index) => {
+                        html += `
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong>${task.title}</strong>
+                                    <div style="color:var(--success); font-size:0.9rem;">+${task.points} נקודות</div>
+                                </div>
+                                <button style="width:auto; padding:8px 12px; margin:0;" onclick="completeTask(${task.points})">בצעתי!</button>
+                            </div>
+                        `;
+                    });
+                }
+
+                html += `</div>`;
+                view.innerHTML = html;
             }
         }
 
@@ -226,6 +273,26 @@
         function modifyPoints(childKey, amount) {
             appData.children[childKey].points += amount;
             saveData();
+            renderDashboard();
+        }
+
+        function addNewTask() {
+            const title = document.getElementById('new-task-title').value;
+            const pts = parseInt(document.getElementById('new-task-pts').value);
+            if (!title || isNaN(pts)) {
+                alert('נא למלא את שם המשימה וכמות הנקודות.');
+                return;
+            }
+            appData.tasks.push({ id: Date.now(), title: title, points: pts });
+            saveData();
+            alert('המשימה נוספה בהצלחה!');
+            renderDashboard();
+        }
+
+        function completeTask(pts) {
+            appData.children[currentUser].points += pts;
+            saveData();
+            alert(`כל הכבוד! נוספו לך ${pts} נקודות.`);
             renderDashboard();
         }
     </script>
