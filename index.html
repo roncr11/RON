@@ -134,6 +134,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
         }
     </style>
 </head>
@@ -167,7 +168,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV16')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV18')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -200,7 +201,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV16', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV18', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -221,7 +222,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV16');
+                localStorage.removeItem('familyPointsDataV18');
                 location.reload();
             }
         }
@@ -419,9 +420,9 @@
                     <div class="card">
                         <h3 style="margin-top:0;">הוספת מטלה חדשה למאגר</h3>
                         <label style="font-size:0.9rem; color:var(--text-light);">שם המטלה:</label>
-                        <input type="text" id="task-title-input" placeholder="למשל: פינוי מדיח">
+                        <input type="text" id="new-task-title" placeholder="למשל: פינוי מדיח">
                         <label style="font-size:0.9rem; color:var(--text-light);">ערך נקודות:</label>
-                        <input type="number" id="task-pts-input" placeholder="2">
+                        <input type="number" id="new-task-pts" placeholder="2">
                         <button onclick="addNewTask()">הוסף מטלה למאגר</button>
                     </div>
 
@@ -429,11 +430,11 @@
                         <h3 style="margin-top:0;">מאגר מטלות קיימות (עריכה ומחיקה):</h3>
                 `;
 
-                appData.tasks.forEach((t, index) => {
+                appData.tasks.forEach((t) => {
                     html += `
                         <div class="task-row">
-                            <input type="text" value="${t.title}" style="width:130px; margin:0; padding:6px;" onchange="updateTaskTitle(${t.id}, this.value)">
-                            <input type="number" value="${t.points}" style="width:70px; margin:0; padding:6px;" onchange="updateTaskPoints(${t.id}, this.value)">
+                            <input type="text" value="${t.title}" style="flex:2; margin:0; padding:6px;" onchange="updateTaskTitle(${t.id}, this.value)">
+                            <input type="number" value="${t.points}" style="flex:1; margin:0; padding:6px;" onchange="updateTaskPoints(${t.id}, this.value)">
                             <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteTask(${t.id})">מחק</button>
                         </div>
                     `;
@@ -558,7 +559,9 @@
         }
 
         function parentUpdatePin(key) {
-            const val = document.getElementById(`parent-set-pin-${key}`).value.trim();
+            const inputEl = document.getElementById(`parent-set-pin-${key}`);
+            if (!inputEl) return;
+            const val = inputEl.value.trim();
             if (val.length !== 4) {
                 alert('הקוד חייב להיות באורך 4 ספרות.');
                 return;
@@ -570,7 +573,9 @@
         }
 
         function parentUpdateMasterPin() {
-            const val = document.getElementById('parent-new-master-pin').value.trim();
+            const inputEl = document.getElementById('parent-new-master-pin');
+            if (!inputEl) return;
+            const val = inputEl.value.trim();
             if (val.length < 2) {
                 alert('קוד הורים חייב להכיל לפחות 2 תווים.');
                 return;
@@ -599,8 +604,11 @@
         }
 
         function saveBonusMessage() {
-            const text = document.getElementById('bonus-msg-text').value.trim();
-            const time = document.getElementById('bonus-msg-time').value;
+            const textEl = document.getElementById('bonus-msg-text');
+            const timeEl = document.getElementById('bonus-msg-time');
+            if (!textEl || !timeEl) return;
+            const text = textEl.value.trim();
+            const time = timeEl.value;
             appData.bonusMessage = { text, time };
             saveData();
             alert('הודעת הבונוס נשמרה בהצלחה!');
@@ -609,14 +617,19 @@
         function clearBonusMessage() {
             appData.bonusMessage = { text: '', time: '' };
             saveData();
-            document.getElementById('bonus-msg-text').value = '';
-            document.getElementById('bonus-msg-time').value = '';
+            const textEl = document.getElementById('bonus-msg-text');
+            const timeEl = document.getElementById('bonus-msg-time');
+            if (textEl) textEl.value = '';
+            if (timeEl) timeEl.value = '';
             alert('הודעת הבונוס נמחקה.');
         }
 
         function awardTaskToChild() {
-            const childKey = document.getElementById('award-child').value;
-            const taskId = parseInt(document.getElementById('award-task').value);
+            const childEl = document.getElementById('award-child');
+            const taskEl = document.getElementById('award-task');
+            if (!childEl || !taskEl) return;
+            const childKey = childEl.value;
+            const taskId = parseInt(taskEl.value);
             const task = appData.tasks.find(t => t.id === taskId);
             
             if (!task || !appData.children[childKey]) return;
@@ -630,8 +643,11 @@
         }
 
         function deductTaskFromChild() {
-            const childKey = document.getElementById('award-child').value;
-            const taskId = parseInt(document.getElementById('award-task').value);
+            const childEl = document.getElementById('award-child');
+            const taskEl = document.getElementById('award-task');
+            if (!childEl || !taskEl) return;
+            const childKey = childEl.value;
+            const taskId = parseInt(taskEl.value);
             const task = appData.tasks.find(t => t.id === taskId);
             
             if (!task || !appData.children[childKey]) return;
@@ -645,8 +661,11 @@
         }
 
         function addNewTask() {
-            const title = document.getElementById('task-title-input').value.trim();
-            const pts = parseInt(document.getElementById('task-pts-input').value);
+            const titleEl = document.getElementById('new-task-title') || document.getElementById('task-title-input');
+            const ptsEl = document.getElementById('new-task-pts') || document.getElementById('task-pts-input');
+            if (!titleEl || !ptsEl) return;
+            const title = titleEl.value.trim();
+            const pts = parseInt(ptsEl.value);
             if (!title || isNaN(pts)) {
                 alert('נא למלא את שם המטלה וערך הנקודות.');
                 return;
@@ -697,8 +716,11 @@
         }
 
         function submitRedemption() {
-            const amount = parseInt(document.getElementById('redeem-amount').value);
-            const type = document.getElementById('redeem-type').value;
+            const amountEl = document.getElementById('redeem-amount');
+            const typeEl = document.getElementById('redeem-type');
+            if (!amountEl || !typeEl) return;
+            const amount = parseInt(amountEl.value);
+            const type = typeEl.value;
             let child = appData.children[currentUser];
 
             if (isNaN(amount) || amount < 4) {
