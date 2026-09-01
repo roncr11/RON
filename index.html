@@ -171,7 +171,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV11')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV12')) || {
             pins: { child1: '1234', child2: '2701', child3: '', parent: '9999' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -185,18 +185,20 @@
                 { id: 4, title: 'הימנעות ממסכים בערב', points: 4 },
                 { id: 5, title: 'הוצאת קופסת אוכל מהתיק', points: 1 }
             ],
+            redemptionRequests: [],
             bonusMessage: { text: '', time: '' }
         };
 
         if (!appData.pins) appData.pins = { child1: '1234', child2: '2701', child3: '', parent: '9999' };
         if (!appData.tasks) appData.tasks = [];
+        if (!appData.redemptionRequests) appData.redemptionRequests = [];
         if (!appData.bonusMessage) appData.bonusMessage = { text: '', time: '' };
         for (let k in appData.children) {
             if (!appData.children[k].history) appData.children[k].history = [];
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV11', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV12', JSON.stringify(appData));
             updateButtonNames();
         }
 
@@ -214,7 +216,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV11');
+                localStorage.removeItem('familyPointsDataV12');
                 location.reload();
             }
         }
@@ -240,7 +242,6 @@
             const enteredPin = inputEl.value.trim();
             const correctPin = appData.pins[currentUser];
             
-            // אם הילד לא הגדיר קוד עדיין (ריק), מאפשרים כניסה אוטומטית או בודקים
             if (currentUser !== 'parent' && !correctPin && enteredPin === '') {
                 document.getElementById('pin-card').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
@@ -272,7 +273,32 @@
             if (currentUser === 'parent') {
                 msg.innerHTML = 'ניהול נקודות ומטלות';
                 
-                let html = `
+                let html = '';
+
+                // התראות בקשות מימוש ממתינות
+                if (appData.redemptionRequests && appData.redemptionRequests.length > 0) {
+                    html += `
+                        <div class="card" style="background: #fefce8; border-color: #fde047;">
+                            <h3 style="margin-top:0; color:#b45309;">🚨 בקשות מימוש ממתינות לאישור:</h3>
+                    `;
+                    appData.redemptionRequests.forEach((req, idx) => {
+                        let childObj = appData.children[req.childKey];
+                        html += `
+                            <div style="background:#fff; border:1px solid #fde68a; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong>${childObj.name}</strong> מבקש/ת <strong>${req.amount} נק'</strong> (${req.type}) - ${req.date}
+                                </div>
+                                <div style="display:flex; gap:5px;">
+                                    <button style="width:auto; padding:6px 12px; margin:0; background-color:var(--success);" onclick="approveRedemption(${idx})">אישור</button>
+                                    <button style="width:auto; padding:6px 12px; margin:0; background-color:var(--danger);" onclick="rejectRedemption(${idx})">ביטול בקשה</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+
+                html += `
                     <!-- קודים אישיים של הילדים -->
                     <div class="card">
                         <h3 style="margin-top:0;">🔑 קודים אישיים של הילדים (למקרה ושכחו):</h3>
@@ -517,7 +543,7 @@
                 alert('נא למלא את שם המטלה וערך הנקודות.');
                 return;
             }
-            appData.tasks.push({ id: Date.now(), title, points: pts });
+            appData.tasks.push({ id: Date.now(), title: title, points: pts });
             saveData();
             alert('המטלה נוספה למאגר בהצלחה!');
             renderDashboard();
@@ -551,10 +577,43 @@
                 return;
             }
 
-            child.points -= amount;
-            child.history.push({ text: `בקשת מימוש: ${amount} נקודות עבור ${type} (${new Date().toLocaleDateString('he-IL')})`, tag: `-${amount} נק'` });
+            if (!appData.redemptionRequests) appData.redemptionRequests = [];
+            appData.redemptionRequests.push({
+                childKey: currentUser,
+                amount: amount,
+                type: type,
+                date: new Date().toLocaleDateString('he-IL')
+            });
+
             saveData();
-            alert('בקשת המימוש הוגשה בהצלחה!');
+            alert('בקשת המימוש הוגשה בהצלחה להורים!');
+            renderDashboard();
+        }
+
+        function approveRedemption(index) {
+            let req = appData.redemptionRequests[index];
+            let child = appData.children[req.childKey];
+
+            if (child.points < req.amount) {
+                alert('לשחקן אין מספיק נקודות כרגע.');
+                appData.redemptionRequests.splice(index, 1);
+                saveData();
+                renderDashboard();
+                return;
+            }
+
+            child.points -= req.amount;
+            child.history.push({ text: `מימוש אושר: ${req.amount} נקודות עבור ${req.type} (${new Date().toLocaleDateString('he-IL')})`, tag: `-${req.amount} נק'` });
+            appData.redemptionRequests.splice(index, 1);
+            saveData();
+            alert('המימוש אושר והנקודות ירדו מיתרת הילד.');
+            renderDashboard();
+        }
+
+        function rejectRedemption(index) {
+            appData.redemptionRequests.splice(index, 1);
+            saveData();
+            alert('הבקשה בוטלה.');
             renderDashboard();
         }
     </script>
