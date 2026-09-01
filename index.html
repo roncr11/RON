@@ -168,24 +168,35 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV24')) || {
-            pins: { child1: '1234', child2: '2701', child3: '' },
-            children: {
-                child1: { name: 'אלון', points: 1, history: [] },
-                child2: { name: 'אורי', points: 1, history: [{text: 'הוצאת קופסת אוכל מהתיק (1.9.2026)', tag: '+1 נק\''}] },
-                child3: { name: 'אופיר', points: 0, history: [] }
-            },
-            tasks: [
-                { id: 1, title: 'סידור חדר', points: 3 },
-                { id: 2, title: 'הכנת שיעורים', points: 2 },
-                { id: 3, title: 'עזרה בהדחת כלים', points: 1 },
-                { id: 4, title: 'הימנעות ממסכים בערב', points: 4 },
-                { id: 5, title: 'הוצאת קופסת אוכל מהתיק', points: 1 }
-            ],
-            redemptionRequests: [],
-            bonusMessage: { text: '', time: '' },
-            parentPin: '9999'
-        };
+        // מפתח אחיד וקבוע שלא משתנה יותר בעדכוני גרסאות - שומר על הנתונים שלך לצמיתות!
+        const STORAGE_KEY = 'familyPointsDataPermanent_v1';
+
+        let savedRawData = localStorage.getItem(STORAGE_KEY);
+        let appData;
+
+        if (savedRawData) {
+            appData = JSON.parse(savedRawData);
+        } else {
+            // ברירת מחדל ראשונית רק אם זו פעם ראשונה לגמרי שבה מתקינים את האפליקציה
+            appData = {
+                pins: { child1: '1234', child2: '2701', child3: '' },
+                children: {
+                    child1: { name: 'אלון', points: 1, history: [] },
+                    child2: { name: 'אורי', points: 1, history: [{text: 'הוצאת קופסת אוכל מהתיק (1.9.2026)', tag: '+1 נק\''}] },
+                    child3: { name: 'אופיר', points: 0, history: [] }
+                },
+                tasks: [
+                    { id: 1, title: 'סידור חדר', points: 3 },
+                    { id: 2, title: 'הכנת שיעורים', points: 2 },
+                    { id: 3, title: 'עזרה בהדחת כלים', points: 1 },
+                    { id: 4, title: 'הימנעות ממסכים בערב', points: 4 },
+                    { id: 5, title: 'הוצאת קופסת אוכל מהתיק', points: 1 }
+                ],
+                redemptionRequests: [],
+                bonusMessage: { text: '', time: '' },
+                parentPin: '9999'
+            };
+        }
 
         if (appData.pins && appData.pins.parent) {
             appData.parentPin = appData.pins.parent;
@@ -201,7 +212,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV24', JSON.stringify(appData));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -222,7 +233,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV24');
+                localStorage.removeItem(STORAGE_KEY);
                 location.reload();
             }
         }
