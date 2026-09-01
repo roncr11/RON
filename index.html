@@ -168,7 +168,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV19')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV20')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -201,7 +201,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV19', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV20', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -222,7 +222,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV19');
+                localStorage.removeItem('familyPointsDataV20');
                 location.reload();
             }
         }
@@ -433,8 +433,8 @@
                 appData.tasks.forEach((t) => {
                     html += `
                         <div class="task-row">
-                            <input type="text" value="${t.title}" style="flex:2; margin:0; padding:6px;" onchange="updateTaskTitle(${t.id}, this.value)">
-                            <input type="number" value="${t.points}" style="flex:1; margin:0; padding:6px;" onchange="updateTaskPoints(${t.id}, this.value)">
+                            <input type="text" value="${t.title}" style="flex:2; margin:0; padding:6px;" onblur="updateTaskTitle(${t.id}, this.value)">
+                            <input type="number" value="${t.points}" style="flex:1; margin:0; padding:6px;" onblur="updateTaskPoints(${t.id}, this.value)">
                             <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteTask(${t.id})">מחק</button>
                         </div>
                     `;
