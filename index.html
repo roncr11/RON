@@ -168,7 +168,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV22')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV23')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -201,7 +201,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV22', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV23', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -222,7 +222,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV22');
+                localStorage.removeItem('familyPointsDataV23');
                 location.reload();
             }
         }
