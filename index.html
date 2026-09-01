@@ -167,15 +167,21 @@
 
     <script>
         let currentUser = null;
-        let bonusTimerInterval = null;
         
         const STORAGE_KEY = 'familyPointsDataPermanent_v1';
         let savedRawData = localStorage.getItem(STORAGE_KEY);
         let appData;
 
         if (savedRawData) {
-            appData = JSON.parse(savedRawData);
-        } else {
+            try {
+                appData = JSON.parse(savedRawData);
+            } catch (e) {
+                appData = null;
+            }
+        }
+
+        // הגנה ושחזור אוטומטי אם הנתונים או רשימת הילדים נפגמו או התרוקנו
+        if (!appData || !appData.children || Object.keys(appData.children).length === 0) {
             appData = {
                 pins: { child1: '1234', child2: '2701', child3: '' },
                 children: {
@@ -194,6 +200,7 @@
                 bonusMessage: { text: '', startTime: '', endTime: '', achievedAlerted: false },
                 parentPin: '9999'
             };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
         }
 
         if (appData.pins && appData.pins.parent) {
@@ -238,7 +245,6 @@
 
         function selectUser(user) {
             currentUser = user;
-            if (bonusTimerInterval) clearInterval(bonusTimerInterval);
             document.getElementById('login-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('pin-card').style.display = 'block';
@@ -287,7 +293,6 @@
 
         function backToLogin() {
             currentUser = null;
-            if (bonusTimerInterval) clearInterval(bonusTimerInterval);
             document.getElementById('pin-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('login-card').style.display = 'block';
@@ -295,7 +300,6 @@
         }
 
         function renderDashboard() {
-            if (bonusTimerInterval) clearInterval(bonusTimerInterval);
             const msg = document.getElementById('welcome-msg');
             const view = document.getElementById('dynamic-view');
 
@@ -305,10 +309,7 @@
                 let html = '';
 
                 let bonusActive = appData.bonusMessage && appData.bonusMessage.text;
-                let achievementUnlocked = false;
-                if (bonusActive && appData.bonusMessage.achievedAlerted) {
-                    achievementUnlocked = true;
-                }
+                let achievementUnlocked = appData.bonusMessage && appData.bonusMessage.achievedAlerted;
 
                 if (achievementUnlocked) {
                     html += `
@@ -539,7 +540,7 @@
                     ${bonusActive ? `
                         <div style="background: ${isAchieved ? '#fef08a' : '#fefce8'}; border: 1px solid ${isAchieved ? '#facc15' : '#fde047'}; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
                             ⭐ <strong>משימת בונוס משותפת:</strong> ${appData.bonusMessage.text}<br>
-                            <span style="font-size: 0.85rem; color: var(--text-light);">⏳ זמן נותר לסיום: <strong id="bonus-countdown-timer" style="color:var(--primary);">חישוב זמן...</strong></span>
+                            <span style="font-size: 0.85rem; color: var(--text-light);">⏳ זמן נותר לסיום: <span id="bonus-countdown" style="font-weight: bold; color: var(--primary);">חישוב...</span></span>
                             ${isAchieved ? '<div style="margin-top: 8px; font-weight: bold; color: #854d0e; background: #fff; padding: 6px; border-radius: 6px; text-align: center;">🏆 הישג הושג בהצלחה! כל הכבוד למשפחה!</div>' : '<div style="margin-top: 5px; font-size: 0.85rem; color: var(--warning);">⚡ ממשיכים לעבוד יחד כדי להשלים את היעד!</div>'}
                         </div>
                     ` : ''}
@@ -579,34 +580,36 @@
                 `;
                 view.innerHTML = html;
 
-                // הפעלת טיימר ספירה לאחור בזמן אמת
+                // הפעלת טיימר ספירה אחורית אם יש תאריך סיום
                 if (bonusActive && appData.bonusMessage.endTime) {
                     startBonusCountdown(appData.bonusMessage.endTime);
                 }
             }
         }
 
-        function startBonusCountdown(endStr) {
-            const endTime = new Date(endStr).getTime();
-            const timerEl = document.getElementById('bonus-countdown-timer');
-            if (!timerEl) return;
+        let countdownTimer = null;
+        function startBonusCountdown(endDateTimeStr) {
+            if (countdownTimer) clearInterval(countdownTimer);
+            const endTime = new Date(endDateTimeStr).getTime();
 
             function updateTimer() {
                 const now = new Date().getTime();
                 const distance = endTime - now;
+                const el = document.getElementById('bonus-countdown');
+                if (!el) return;
 
                 if (distance < 0) {
-                    timerEl.innerHTML = "הזמן הסתיים! ⌛";
-                    clearInterval(bonusTimerInterval);
+                    el.innerText = 'הזמן הסתיים!';
+                    clearInterval(countdownTimer);
                     return;
                 }
 
                 const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * הוספתי טיימר לאזור האישי של הילדים שרץ בזמן אמת ומציג בדיוק כמה זמן נשאר (ימים, שעות, דקות ושניות) עד לסיום משימת הבונוס, או מעדכן שהזמן הסתיים.
+                const seconds = Math.floor((distance % (1000 * 60השמות נעלמו כי הפונקציה `updateLoginButtons()` נקראה לפני שרשימת הילדים נטענה כראוי ממבנה הנתונים בטעינת העמוד, וגם הוספתי במקביל את **הטיימר החי** למסך הילדים שמציג בדיוק מתי משימת הבונוס נגמרת.
 
-הנה הקוד המעודכן והסופי להדבקה ב-`index.html`:
+הנה הקוד המעודכן, המתוקן והשלם הכולל את הטיימר ואת החזרת שמות הילדים למסך הראשי:
 
 ```html
 <!DOCTYPE html>
@@ -647,4 +650,4 @@
         h1 {
             text-align: center;
             color: var(--primary);
-            font-size: 1.5rem;
+            font-size:
