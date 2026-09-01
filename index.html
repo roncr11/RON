@@ -168,7 +168,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV23')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV24')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -201,7 +201,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV23', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV24', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -222,7 +222,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV23');
+                localStorage.removeItem('familyPointsDataV24');
                 location.reload();
             }
         }
@@ -291,6 +291,24 @@
                 msg.innerHTML = 'ניהול נקודות ומטלות';
                 
                 let html = '';
+
+                // סטטוס נקודות כללי לכל הילדים במסך ההורים
+                html += `
+                    <div class="card" style="background: #f0fdf4; border-color: #bbf7d0;">
+                        <h3 style="margin-top:0; color:#166534;">🏆 סטטוס נקודות הילדים:</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                `;
+                for (let key in appData.children) {
+                    let child = appData.children[key];
+                    html += `
+                        <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #d1fae5; text-align: center;">
+                            <div style="font-weight: bold; color: var(--text);">${child.name}</div>
+                            <div style="font-size: 1.4rem; font-weight: bold; color: var(--success); margin: 5px 0;">${child.points}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-light);">נקודות</div>
+                        </div>
+                    `;
+                }
+                html += `</div></div>`;
 
                 if (appData.redemptionRequests && appData.redemptionRequests.length > 0) {
                     html += `
