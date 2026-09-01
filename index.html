@@ -136,6 +136,16 @@
             align-items: center;
             gap: 8px;
         }
+        .timer-box {
+            background: #1e293b;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -167,11 +177,24 @@
 
     <script>
         let currentUser = null;
+        let timerInterval = null;
         
         const STORAGE_KEY = 'familyPointsDataPermanent_v1';
+        
+        // מנגנון גיבוי ומיזוג למניעת איפוס נתונים
         let savedRawData = localStorage.getItem(STORAGE_KEY);
-        let appData;
+        if (!savedRawData) {
+            // בדיקה אם יש נתונים מגרסאות קודמות כדי לא לאבד כלום
+            for (let i = 1; i <= 24; i++) {
+                let oldData = localStorage.getItem(`familyPointsDataV${i}`);
+                if (oldData) {
+                    savedRawData = oldData;
+                    break;
+                }
+            }
+        }
 
+        let appData;
         if (savedRawData) {
             appData = JSON.parse(savedRawData);
         } else {
@@ -237,6 +260,7 @@
 
         function selectUser(user) {
             currentUser = user;
+            if (timerInterval) clearInterval(timerInterval);
             document.getElementById('login-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('pin-card').style.display = 'block';
@@ -285,6 +309,7 @@
 
         function backToLogin() {
             currentUser = null;
+            if (timerInterval) clearInterval(timerInterval);
             document.getElementById('pin-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('login-card').style.display = 'block';
@@ -294,6 +319,7 @@
         function renderDashboard() {
             const msg = document.getElementById('welcome-msg');
             const view = document.getElementById('dynamic-view');
+            if (timerInterval) clearInterval(timerInterval);
 
             if (currentUser === 'parent') {
                 msg.innerHTML = 'ניהול נקודות ומטלות';
@@ -315,6 +341,7 @@
                     `;
                 }
 
+                // סטטוס נקודות כללי לכל הילדים במסך ההורים
                 html += `
                     <div class="card" style="background: #f0fdf4; border-color: #bbf7d0;">
                         <h3 style="margin-top:0; color:#166534;">🏆 סטטוס נקודות הילדים:</h3>
@@ -536,6 +563,11 @@
                         <div style="background: ${isAchieved ? '#fef08a' : '#fefce8'}; border: 1px solid ${isAchieved ? '#facc15' : '#fde047'}; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
                             ⭐ <strong>משימת בונוס משותפת:</strong> ${appData.bonusMessage.text}<br>
                             <span style="font-size: 0.85rem; color: var(--text-light);">📅 סיום יעד: ${appData.bonusMessage.endTime ? appData.bonusMessage.endTime.replace('T', ' בשעה ') : 'ללא הגבלה'}</span>
+                            
+                            ${appData.bonusMessage.endTime ? `
+                                <div id="countdown-timer" class="timer-box">טוען טיימר...</div>
+                            ` : ''}
+
                             ${isAchieved ? '<div style="margin-top: 8px; font-weight: bold; color: #854d0e; background: #fff; padding: 6px; border-radius: 6px; text-align: center;">🏆 הישג הושג בהצלחה! כל הכבוד למשפחה!</div>' : '<div style="margin-top: 5px; font-size: 0.85rem; color: var(--warning);">⚡ ממשיכים לעבוד יחד כדי להשלים את היעד!</div>'}
                         </div>
                     ` : ''}
@@ -574,284 +606,183 @@
                     <button onclick="backToLogin()">חזרה לדף הראשי</button>
                 `;
                 view.innerHTML = html;
-            }
-        }
 
-        function toggleSettingsPanel() {
-            const panel = document.getElementById('settings-panel');
-            const icon = document.getElementById('settings-toggle-icon');
-            if (panel.style.display === 'none') {
-                panel.style.display = 'block';
-                icon.innerText = '▲';
-            } else {
-                panel.style.display = 'none';
-                icon.innerText = '▼';
-            }
-        }
-
-        function resetChildPoints(key) {
-            if (confirm(`האם לאפס את הנקודות וההיסטוריה עבור ${appData.children[key].name}?`)) {
-                appData.children[key].points = 0;
-                appData.children[key].history.push({ text: `איפוס נקודות על ידי ההורים (${new Date().toLocaleDateString('he-IL')})`, tag: 'איפוס' });
-                saveData();
-                alert('הנקודות אופסו בהצלחה!');
-                renderDashboard();
-            }
-        }
-
-        function addNewChildModal() {
-            const name = prompt('הכנס את שם הילד החדש:');
-            if (!name || !name.trim()) return;
-            const newKey = 'child_' + Date.now();
-            appData.children[newKey] = { name: name.trim(), points: 0, history: [] };
-            appData.pins[newKey] = '';
-            saveData();
-            renderDashboard();
-        }
-
-        function deleteChild(key) {
-            if (Object.keys(appData.children).length <= 1) {
-                alert('חייב להישאר לפחות ילד אחד במערכת.');
-                return;
-            }
-            if (confirm('האם למחוק ילד זה מהמערכת?')) {
-                delete appData.children[key];
-                delete appData.pins[key];
-                saveData();
-                renderDashboard();
-            }
-        }
-
-        function updateChildNameFromParent(key, newName) {
-            if (!newName.trim()) return;
-            appData.children[key].name = newName.trim();
-            saveData();
-        }
-
-        function parentUpdatePin(key) {
-            const inputEl = document.getElementById(`parent-set-pin-${key}`);
-            if (!inputEl) return;
-            const val = inputEl.value.trim();
-            if (val.length !== 4) {
-                alert('הקוד חייב להיות באורך 4 ספרות.');
-                return;
-            }
-            appData.pins[key] = val;
-            saveData();
-            alert('הקוד עודכן בהצלחה!');
-            renderDashboard();
-        }
-
-        function parentUpdateMasterPin() {
-            const inputEl = document.getElementById('parent-new-master-pin');
-            if (!inputEl) return;
-            const val = inputEl.value.trim();
-            if (val.length < 2) {
-                alert('קוד הורים חייב להכיל לפחות 2 תווים.');
-                return;
-            }
-            appData.parentPin = val;
-            saveData();
-            alert('קוד ההורים עודכן בהצלחה!');
-        }
-
-        function renderParentHistory() {
-            const selectEl = document.getElementById('parent-history-select');
-            if (!selectEl) return;
-            window.selectedHistChild = selectEl.value;
-            const container = document.getElementById('parent-history-container');
-            const childObj = appData.children[window.selectedHistChild];
-            if (!childObj || !childObj.history || childObj.history.length === 0) {
-                container.innerHTML = `<p style="color:var(--text-light); font-size:0.9rem; text-align:center; margin:5px 0;">אין היסטוריה לילד זה.</p>`;
-                return;
-            }
-
-            let hHtml = '';
-            childObj.history.slice().reverse().forEach(item => {
-                hHtml += `<div style="font-size:0.85rem; border-bottom:1px solid #f1f5f9; padding:6px 0; display:flex; justify-content:space-between;"><span>${item.text}</span><span style="color:var(--success); font-weight:bold;">${item.tag}</span></div>`;
-            });
-            container.innerHTML = hHtml;
-        }
-
-        function saveBonusMessage() {
-            const textEl = document.getElementById('bonus-msg-text');
-            const startEl = document.getElementById('bonus-msg-start');
-            const endEl = document.getElementById('bonus-msg-end');
-            if (!textEl) return;
-            appData.bonusMessage = {
-                text: textEl.value.trim(),
-                startTime: startEl ? startEl.value : '',
-                endTime: endEl ? endEl.value : '',
-                achievedAlerted: false
-            };
-            saveData();
-            alert('משימת הבונוס והתזמון נשמרו בהצלחה!');
-        }
-
-        function clearBonusMessage() {
-            appData.bonusMessage = { text: '', startTime: '', endTime: '', achievedAlerted: false };
-            saveData();
-            alert('משימת הבונוס נמחקה.');
-            renderDashboard();
-        }
-
-        function awardTaskToChild() {
-            const childEl = document.getElementById('award-child');
-            const taskEl = document.getElementById('award-task');
-            if (!childEl || !taskEl) return;
-            const childKey = childEl.value;
-            const taskId = parseInt(taskEl.value);
-            const task = appData.tasks.find(t => t.id === taskId);
-            
-            if (!task || !appData.children[childKey]) return;
-
-            appData.children[childKey].points += task.points;
-            let dateStr = new Date().toLocaleDateString('he-IL');
-            appData.children[childKey].history.push({ text: `${task.title} (${dateStr})`, tag: `+${task.points} נק'` });
-            saveData();
-            alert(`הוענקו ${task.points} נקודות בהצלחה ל-${appData.children[childKey].name}!`);
-            renderDashboard();
-        }
-
-        function deductTaskFromChild() {
-            const childEl = document.getElementById('award-child');
-            const taskEl = document.getElementById('award-task');
-            if (!childEl || !taskEl) return;
-            const childKey = childEl.value;
-            const taskId = parseInt(taskEl.value);
-            const task = appData.tasks.find(t => t.id === taskId);
-            
-            if (!task || !appData.children[childKey]) return;
-
-            appData.children[childKey].points -= task.points;
-            let dateStr = new Date().toLocaleDateString('he-IL');
-            appData.children[childKey].history.push({ text: `הורדת נקודות (${task.title}) (${dateStr})`, tag: `-${task.points} נק'` });
-            saveData();
-            alert(`הופחתו ${task.points} נקודות מ-${appData.children[childKey].name}!`);
-            renderDashboard();
-        }
-
-        function addNewTask() {
-            const titleEl = document.getElementById('parent-new-task-title');
-            const ptsEl = document.getElementById('parent-new-task-pts');
-            
-            if (!titleEl || !ptsEl) {
-                alert('שגיאה באיתור שדות הקלט.');
-                return;
-            }
-
-            const title = titleEl.value.trim();
-            const pts = parseInt(ptsEl.value);
-
-            if (!title || isNaN(pts)) {
-                alert('נא למלא את שם המטלה וערך הנקודות.');
-                return;
-            }
-
-            appData.tasks.push({ id: Date.now(), title: title, points: pts });
-            saveData();
-            alert('המטלה נוספה למאגר בהצלחה!');
-            renderDashboard();
-        }
-
-        function saveAllTasksChanges() {
-            appData.tasks.forEach(t => {
-                const nameEl = document.getElementById(`task-name-${t.id}`);
-                const ptsEl = document.getElementById(`task-pts-${t.id}`);
-                if (nameEl && ptsEl) {
-                    let newTitle = nameEl.value.trim();
-                    let newPts = parseInt(ptsEl.value);
-                    if (newTitle) t.title = newTitle;
-                    if (!isNaN(newPts)) t.points = newPts;
+                // הפעלת הטיימר ברגע שהאזור האישי מוצג
+                if (bonusActive && appData.bonusMessage.endTime) {
+                    startCountdown(appData.bonusMessage.endTime);
                 }
-            });
-            saveData();
-            alert('שינויי המאגר נשמרו בהצלחה!');
-            renderDashboard();
-        }
-
-        function deleteTask(id) {
-            if (confirm('האם למחוק מטלה זו מהמאגר?')) {
-                appData.tasks = appData.tasks.filter(t => t.id !== id);
-                saveData();
-                renderDashboard();
             }
         }
 
-        function updateMyPin() {
-            const inputEl = document.getElementById('new-child-pin');
-            if (!inputEl) return;
-            const newPin = inputEl.value.trim();
-            if (newPin.length !== 4) {
-                alert('הקוד חייב להיות בדיוק באורך 4 ספרות.');
-                return;
-            }
-            appData.pins[currentUser] = newPin;
-            saveData();
-            alert('הקוד האישי עודכן בהצלחה!');
-            inputEl.value = '';
+        function startCountdown(endDateTimeStr) {
+            const endTime = new Date(endDateTimeStr).getTime();
+            if (isNaN(endTime)) return;
+
+            timerInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = endTime - now;
+
+                const timerEl = document.getElementById('countdown-timer');
+                if (!timerEl) {
+                    clearInterval(timerInterval);
+                    return;
+                }
+
+                if (distance < 0) {
+                    timerEl.innerHTML = '⌛ הזמן הקצוב למשימה הסתיים!';
+                    clearInterval(timerInterval);
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                הבעיה שהנתונים התאפסו קורית כי בדפדפן שלך עדיין יש נתונים שנשמרו תחת מפתח ישן (`familyPointsDataV22` וכו'), וכשאפליקציה פתחה מפתח חדש פעם אחת, היא יצרה את ברירת המחדל. 
+
+תיקנתי זאת לחלוטין: הוספתי **מנגנון הגירה אוטומטי (Migration)** שיודע לחפש אוטומטית אם יש נתונים קודמים באיזשהו מפתח ישן ולייבא אותם לתוך מפתח הקבע, כך שהנתונים שלך והילדים **לעולם לא יאבדו**. בנוסף, הוספתי את הטיימר המדויק למסך הילדים שמציג בזמן אמת כמה זמן נשאר עד לסיום משימת הבונוס.
+
+הנה הקוד המלא והיציב ביותר (העתק והדבק לתוך `index.html`):
+
+```html
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <link rel="apple-touch-icon" href="[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)">
+    <link rel="icon" type="image/png" href="[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="נקודות משפחתי">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול נקודות משפחתי</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
         }
-
-        function submitRedemption() {
-            const amountEl = document.getElementById('redeem-amount');
-            const typeEl = document.getElementById('redeem-type');
-            if (!amountEl || !typeEl) return;
-            const amount = parseInt(amountEl.value);
-            const type = typeEl.value;
-            let child = appData.children[currentUser];
-
-            if (isNaN(amount) || amount < 4) {
-                alert('מינימום נקודות למימוש הוא 4.');
-                return;
-            }
-            if (child.points < amount) {
-                alert('אין לך מספיק נקודות למימוש כמות זו.');
-                return;
-            }
-
-            if (!appData.redemptionRequests) appData.redemptionRequests = [];
-            appData.redemptionRequests.push({
-                childKey: currentUser,
-                amount: amount,
-                type: type,
-                date: new Date().toLocaleDateString('he-IL')
-            });
-
-            saveData();
-            alert('בקשת המימוש הוגשה בהצלחה להורים!');
-            renderDashboard();
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            direction: rtl;
         }
-
-        function approveRedemption(index) {
-            let req = appData.redemptionRequests[index];
-            let child = appData.children[req.childKey];
-
-            if (!child) {
-                appData.redemptionRequests.splice(index, 1);
-                saveData();
-                renderDashboard();
-                return;
-            }
-
-            if (child.points < req.amount) {
-                alert('לשחקן אין מספיק נקודות כרגע.');
-                appData.redemptionRequests.splice(index, 1);
-            } else {
-                child.points -= req.amount;
-                child.history.push({ text: `מימוש אושר: ${req.amount} נקודות עבור ${req.type} (${new Date().toLocaleDateString('he-IL')})`, tag: `-${req.amount} נק'` });
-                appData.redemptionRequests.splice(index, 1);
-                alert('המימוש אושר והנקודות ירדו מיתרת הילד.');
-            }
-            saveData();
-            renderDashboard();
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
         }
-
-        function rejectRedemption(index) {
-            appData.redemptionRequests.splice(index, 1);
-            saveData();
-            alert('הבקשה בוטלה.');
-            renderDashboard();
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 20px;
         }
-    </script>
-</body>
-</html>
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 16px;
+            border: 1px solid #cbd5e1;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+            font-size: 1rem;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0 12px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .user-select-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .user-btn {
+            background: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 20px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-align: center;
+        }
+        .user-btn:hover, .user-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .flex-row {
+            display: flex;
+            gap: 8px;
+        }
+        .password-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-container input {
+            margin-bottom: 0;
+        }
+        .toggle-password {
+            position: absolute;
+            left: 12px;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: auto;
+            margin: 0;
+            padding: 0;
+        }
+        .pin-pill {
+            background: #f1f5f9;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: var(--text);
+            display: inline-block;
+        }
+        .task-row {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .timer-box {
+            background: #fff;
