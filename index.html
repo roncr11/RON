@@ -115,16 +115,6 @@
             margin: 0;
             padding: 0;
         }
-        .task-item {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
     </style>
 </head>
 <body>
@@ -161,30 +151,28 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV9')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV10')) || {
             pins: { child1: '1111', child2: '2222', child3: '3333', parent: '9999' },
             children: {
-                child1: { name: 'אלון', points: 50, history: [] },
-                child2: { name: 'אורי', points: 40, history: [] },
-                child3: { name: 'אופיר', points: 60, history: [] }
+                child1: { name: 'אלון', points: 1, history: [{text: 'הוצאת קופסת אוכל מהתיק (1.9.2026)', tag: '+1 נק\''}] },
+                child2: { name: 'אורי', points: 1, history: [{text: 'הוצאת קופסת אוכל מהתיק (1.9.2026)', tag: '+1 נק\''}] },
+                child3: { name: 'אופיר', points: 1, history: [{text: 'הוצאת קופסת אוכל מהתיק (1.9.2026)', tag: '+1 נק\''}] }
             },
             tasks: [
                 { id: 1, title: 'סידור חדר', points: 15 },
                 { id: 2, title: 'הכנת שיעורי בית', points: 20 },
                 { id: 3, title: 'עזרה בשטיפת כלים', points: 10 }
-            ],
-            pendingApprovals: [] // בקשות ממתינות לאישור הורים
+            ]
         };
 
         if (!appData.pins) appData.pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
         if (!appData.tasks) appData.tasks = [];
-        if (!appData.pendingApprovals) appData.pendingApprovals = [];
         for (let k in appData.children) {
             if (!appData.children[k].history) appData.children[k].history = [];
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV9', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV10', JSON.stringify(appData));
             updateButtonNames();
         }
 
@@ -202,7 +190,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV9');
+                localStorage.removeItem('familyPointsDataV10');
                 location.reload();
             }
         }
@@ -253,28 +241,6 @@
                 msg.innerHTML = 'לוח בקרה הורים 👨‍👩‍👧‍👦';
                 
                 let html = `<div style="margin-bottom:20px;">
-                    <h3>אישורי משימות ומימושים ממתינים:</h3>`;
-
-                if (appData.pendingApprovals.length === 0) {
-                    html += `<p style="color:var(--text-light); font-size:0.9rem;">אין בקשות ממתינות כרגע.</p>`;
-                } else {
-                    appData.pendingApprovals.forEach((req, idx) => {
-                        html += `
-                            <div style="background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <strong>${appData.children[req.childKey].name}</strong> ביקש/ה לאשר: <strong>${req.title}</strong>
-                                    <div style="color:var(--warning); font-size:0.9rem;">+${req.points} נקודות</div>
-                                </div>
-                                <div style="display:flex; gap:5px;">
-                                    <button style="width:auto; padding:6px 10px; margin:0; background-color:var(--success);" onclick="approveRequest(${idx})">אשר</button>
-                                    <button style="width:auto; padding:6px 10px; margin:0; background-color:var(--danger);" onclick="rejectRequest(${idx})">דחה</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-
-                html += `</div><div style="margin-bottom:20px; border-top: 2px solid #e2e8f0; padding-top:15px;">
                     <h3>ניהול ילדים, נקודות וקודים:</h3>`;
                 
                 for (let key in appData.children) {
@@ -292,9 +258,9 @@
                                 <span>נקודות נוכחיות: <strong>${child.points}</strong></span>
                             </div>
                             <div class="flex-row" style="margin-top:8px;">
+                                <button onclick="modifyPoints('${key}', 1)">+1</button>
                                 <button onclick="modifyPoints('${key}', 5)">+5</button>
                                 <button onclick="modifyPoints('${key}', 10)">+10</button>
-                                <button onclick="modifyPoints('${key}', 20)">+20</button>
                                 <button style="background-color:var(--danger);" onclick="modifyPoints('${key}', -10)">-10</button>
                             </div>
                         </div>
@@ -323,11 +289,8 @@
                 msg.innerText = `האזור האישי של ${child.name}`;
                 
                 let html = `
-                    <div style="text-align:center; padding: 20px; background: #e0e7ff; border-radius: 12px; margin-bottom: 20px;">
-                        <h3 style="margin:0 0 10px 0;">היתרה שלך:</h3>
-                        <p style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 0;">${child.points}</p>
-                    </div>
-
+                    <p style="font-size: 1.1rem; font-weight: bold;">היתרה שלך: <span style="color:var(--primary);">${child.points}</span> נקודות</p>
+                    
                     <div style="background: #eef2ff; border: 1px solid #c7d2fe; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95rem;">
                         💡 <strong>שימו לב:</strong> נקודה אחת שווה 5 שקלים או 10 דקות מסך!
                     </div>
@@ -344,27 +307,15 @@
                         <button onclick="submitRedemption()">הגש בקשת מימוש להורים</button>
                     </div>
 
-                    <h3>משימות זמינות לצבירת נקודות:</h3>
-                    <div style="margin-bottom:20px;">
+                    <div class="card" style="border: 1px solid #cbd5e1; box-shadow:none; padding:12px; margin-bottom:15px;">
+                        <label style="font-size:0.9rem; color:var(--text-light);">שינוי קוד אישי (4 ספרות חדשות):</label>
+                        <input type="password" id="new-child-pin" maxlength="4" placeholder="הכנס קוד חדש">
+                        <button style="background-color: #0ea5e9;" onclick="updateMyPin()">עדכן קוד אישי</button>
+                    </div>
+
+                    <h3>היסטוריה שלי:</h3>
+                    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px; max-height:180px; overflow-y:auto; margin-bottom:20px;">
                 `;
-
-                if (appData.tasks.length === 0) {
-                    html += `<p style="color:var(--text-light);">אין משימות זמינות כרגע.</p>`;
-                } else {
-                    appData.tasks.forEach((task) => {
-                        html += `
-                            <div class="task-item">
-                                <div>
-                                    <strong>${task.title}</strong>
-                                    <div style="color:var(--success); font-size:0.9rem;">+${task.points} נקודות</div>
-                                </div>
-                                <button style="width:auto; padding:8px 12px; margin:0; background-color:var(--warning);" onclick="requestTaskApproval('${task.title.replace(/'/g, "\\'")}', ${task.points})">דווח ביצוע להורים</button>
-                            </div>
-                        `;
-                    });
-                }
-
-                html += `</div><h3>היסטוריה שלי:</h3><div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px; max-height:180px; overflow-y:auto; margin-bottom:20px;">`;
 
                 if (!child.history || child.history.length === 0) {
                     html += `<p style="color:var(--text-light); font-size:0.9rem; text-align:center;">אין עדיין היסטוריה.</p>`;
@@ -375,11 +326,6 @@
                 }
 
                 html += `</div>
-                    <div class="card" style="border: 1px solid #cbd5e1; box-shadow:none; padding:12px; margin-bottom:15px;">
-                        <label style="font-size:0.9rem; color:var(--text-light);">שינוי קוד אישי (4 ספרות חדשות):</label>
-                        <input type="password" id="new-child-pin" maxlength="4" placeholder="הכנס קוד חדש">
-                        <button style="background-color: #0ea5e9;" onclick="updateMyPin()">עדכן קוד אישי</button>
-                    </div>
                     <button onclick="backToLogin()">חזרה לדף הראשי</button>
                 `;
                 view.innerHTML = html;
@@ -421,29 +367,6 @@
             let tag = amount > 0 ? `+${amount} נק'` : `${amount} נק'`;
             appData.children[childKey].history.push({ text: `${actionText} (${new Date().toLocaleDateString('he-IL')})`, tag: tag });
             saveData();
-            renderDashboard();
-        }
-
-        function requestTaskApproval(taskTitle, pts) {
-            appData.pendingApprovals.push({ childKey: currentUser, title: taskTitle, points: pts });
-            saveData();
-            alert('דיווח הביצוע נשלח להורים לאישור!');
-        }
-
-        function approveRequest(index) {
-            let req = appData.pendingApprovals[index];
-            appData.children[req.childKey].points += req.points;
-            appData.children[req.childKey].history.push({ text: `אישור ביצוע משימה: ${req.title} (${new Date().toLocaleDateString('he-IL')})`, tag: `+${req.points} נק'` });
-            appData.pendingApprovals.splice(index, 1);
-            saveData();
-            alert('הבקשה אושרה והנקודות נוספו לילד!');
-            renderDashboard();
-        }
-
-        function rejectRequest(index) {
-            appData.pendingApprovals.splice(index, 1);
-            saveData();
-            alert('הבקשה נדחתה.');
             renderDashboard();
         }
 
