@@ -143,12 +143,10 @@
         
         <div class="card" id="login-card">
             <h3>בחר משתמש לכניסה:</h3>
-            <div class="user-select-grid">
-                <button class="user-btn" id="btn-child1" onclick="selectUser('child1')">אלון</button>
-                <button class="user-btn" id="btn-child2" onclick="selectUser('child2')">אורי</button>
-                <button class="user-btn" id="btn-child3" onclick="selectUser('child3')">אופיר</button>
-                <button class="user-btn" onclick="selectUser('parent')">הורים 🔒</button>
+            <div class="user-select-grid" id="login-user-grid">
+                <!-- יתמלא דינמית -->
             </div>
+            <button class="user-btn" style="width:100%; margin-top:5px;" onclick="selectUser('parent')">הורים 🔒</button>
             <button style="background-color: var(--warning); margin-top: 15px;" onclick="resetAllData()">איפוס כללי (למקרה חירום)</button>
         </div>
 
@@ -171,8 +169,8 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV12')) || {
-            pins: { child1: '1234', child2: '2701', child3: '', parent: '9999' },
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV13')) || {
+            pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
                 child2: { name: 'אורי', points: 1, history: [{text: 'הוצאת קופסת אוכל מהתיק (1.9.2026)', tag: '+1 נק\''}] },
@@ -186,10 +184,16 @@
                 { id: 5, title: 'הוצאת קופסת אוכל מהתיק', points: 1 }
             ],
             redemptionRequests: [],
-            bonusMessage: { text: '', time: '' }
+            bonusMessage: { text: '', time: '' },
+            parentPin: '9999'
         };
 
-        if (!appData.pins) appData.pins = { child1: '1234', child2: '2701', child3: '', parent: '9999' };
+        if (appData.pins && appData.pins.parent) {
+            appData.parentPin = appData.pins.parent;
+            delete appData.pins.parent;
+        }
+        if (!appData.parentPin) appData.parentPin = '9999';
+        if (!appData.pins) appData.pins = {};
         if (!appData.tasks) appData.tasks = [];
         if (!appData.redemptionRequests) appData.redemptionRequests = [];
         if (!appData.bonusMessage) appData.bonusMessage = { text: '', time: '' };
@@ -198,25 +202,28 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV12', JSON.stringify(appData));
-            updateButtonNames();
+            localStorage.setItem('familyPointsDataV13', JSON.stringify(appData));
+            updateLoginButtons();
         }
 
-        function updateButtonNames() {
-            try {
-                if (appData.children.child1) document.getElementById('btn-child1').innerText = appData.children.child1.name;
-                if (appData.children.child2) document.getElementById('btn-child2').innerText = appData.children.child2.name;
-                if (appData.children.child3) document.getElementById('btn-child3').innerText = appData.children.child3.name;
-            } catch (e) {}
+        function updateLoginButtons() {
+            const grid = document.getElementById('login-user-grid');
+            if (!grid) return;
+            let html = '';
+            for (let key in appData.children) {
+                let c = appData.children[key];
+                html += `<button class="user-btn" id="btn-${key}" onclick="selectUser('${key}')">${c.name}</button>`;
+            }
+            grid.innerHTML = html;
         }
 
         window.onload = function() {
-            updateButtonNames();
+            updateLoginButtons();
         };
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV12');
+                localStorage.removeItem('familyPointsDataV13');
                 location.reload();
             }
         }
@@ -240,9 +247,20 @@
             const inputEl = document.getElementById('pin-input');
             if (!inputEl) return;
             const enteredPin = inputEl.value.trim();
-            const correctPin = appData.pins[currentUser];
             
-            if (currentUser !== 'parent' && !correctPin && enteredPin === '') {
+            if (currentUser === 'parent') {
+                if (enteredPin === appData.parentPin) {
+                    document.getElementById('pin-card').style.display = 'none';
+                    document.getElementById('app-content').style.display = 'block';
+                    renderDashboard();
+                } else {
+                    alert('קוד הורים שגוי.');
+                }
+                return;
+            }
+
+            const correctPin = appData.pins[currentUser] || '';
+            if (!correctPin && enteredPin === '') {
                 document.getElementById('pin-card').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
                 renderDashboard();
@@ -263,7 +281,7 @@
             document.getElementById('pin-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('login-card').style.display = 'block';
-            updateButtonNames();
+            updateLoginButtons();
         }
 
         function renderDashboard() {
@@ -275,7 +293,6 @@
                 
                 let html = '';
 
-                // התראות בקשות מימוש ממתינות
                 if (appData.redemptionRequests && appData.redemptionRequests.length > 0) {
                     html += `
                         <div class="card" style="background: #fefce8; border-color: #fde047;">
@@ -283,10 +300,11 @@
                     `;
                     appData.redemptionRequests.forEach((req, idx) => {
                         let childObj = appData.children[req.childKey];
+                        let childName = childObj ? childObj.name : 'ילד';
                         html += `
                             <div style="background:#fff; border:1px solid #fde68a; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
                                 <div>
-                                    <strong>${childObj.name}</strong> מבקש/ת <strong>${req.amount} נק'</strong> (${req.type}) - ${req.date}
+                                    <strong>${childName}</strong> מבקש/ת <strong>${req.amount} נק'</strong> (${req.type}) - ${req.date}
                                 </div>
                                 <div style="display:flex; gap:5px;">
                                     <button style="width:auto; padding:6px 12px; margin:0; background-color:var(--success);" onclick="approveRedemption(${idx})">אישור</button>
@@ -298,33 +316,45 @@
                     html += `</div>`;
                 }
 
+                // אזור הגדרות סגור לקודים אישיים וניהול ילדים
                 html += `
-                    <!-- קודים אישיים של הילדים -->
                     <div class="card">
-                        <h3 style="margin-top:0;">🔑 קודים אישיים של הילדים (למקרה ושכחו):</h3>
+                        <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSettingsPanel()">
+                            <h3 style="margin:0;">🔑 הגדרות קודים וניהול ילדים</h3>
+                            <span id="settings-toggle-icon">▼</span>
+                        </div>
+                        <div id="settings-panel" style="display:none; margin-top:15px; border-top:1px solid #e2e8f0; padding-top:10px;">
                 `;
 
                 for (let key in appData.children) {
                     let child = appData.children[key];
                     let pinVal = appData.pins[key] ? appData.pins[key] : 'טרם הוגדר';
                     html += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
-                            <strong>${child.name}</strong>
-                            <div>
-                                <span class="pin-pill">${pinVal}</span>
-                                <input type="text" maxlength="4" placeholder="שנה קוד" style="width:100px; display:inline-block; margin:0 5px; padding:6px;" id="parent-set-pin-${key}">
-                                <button style="width:auto; padding:6px 10px; margin:0;" onclick="parentUpdatePin('${key}')">עדכן</button>
+                        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #e2e8f0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <input type="text" value="${child.name}" style="width:120px; margin:0; padding:6px;" onchange="updateChildNameFromParent('${key}', this.value)">
+                                <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteChild('${key}')">מחק ילד</button>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>קוד: <span class="pin-pill">${pinVal}</span></span>
+                                <div>
+                                    <input type="text" maxlength="4" placeholder="שנה קוד" style="width:90px; display:inline-block; margin:0 5px; padding:6px;" id="parent-set-pin-${key}">
+                                    <button style="width:auto; padding:6px 10px; margin:0;" onclick="parentUpdatePin('${key}')">עדכן</button>
+                                </div>
                             </div>
                         </div>
                     `;
                 }
 
                 html += `
-                        <div style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:10px;">
-                            <label style="font-size:0.9rem;">שינוי קוד הורים 🔒:</label>
-                            <div style="display:flex; gap:8px;">
-                                <input type="text" maxlength="6" id="parent-new-master-pin" value="${appData.pins.parent}" placeholder="קוד הורים חדש">
-                                <button style="width:auto; margin:0;" onclick="parentUpdateMasterPin()">עדכן קוד הורים</button>
+                            <button style="background-color: var(--success); margin-top: 10px;" onclick="addNewChildModal()">➕ הוסף ילד נוסף</button>
+
+                            <div style="margin-top:15px; border-top:1px solid #e2e8f0; padding-top:10px;">
+                                <label style="font-size:0.9rem;">שינוי קוד הורים 🔒:</label>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="text" maxlength="6" id="parent-new-master-pin" value="${appData.parentPin}" placeholder="קוד הורים חדש">
+                                    <button style="width:auto; margin:0;" onclick="parentUpdateMasterPin()">עדכן קוד הורים</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -334,9 +364,14 @@
                         <h3 style="margin-top:0;">📊 מעקב היסטוריות ובקשות לפי ילד:</h3>
                         <label style="font-size:0.9rem; color:var(--text-light);">בחר ילד לצפייה בהיסטוריה:</label>
                         <select id="parent-history-select" onchange="renderParentHistory()">
-                            <option value="child1" ${window.selectedHistChild === 'child1' ? 'selected' : ''}>${appData.children.child1.name}</option>
-                            <option value="child2" ${window.selectedHistChild === 'child2' ? 'selected' : ''}>${appData.children.child2.name}</option>
-                            <option value="child3" ${window.selectedHistChild === 'child3' ? 'selected' : ''}>${appData.children.child3.name}</option>
+                `;
+
+                for (let key in appData.children) {
+                    let c = appData.children[key];
+                    html += `<option value="${key}" ${window.selectedHistChild === key ? 'selected' : ''}>${c.name}</option>`;
+                }
+
+                html += `
                         </select>
                         <div id="parent-history-container" style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px; max-height:150px; overflow-y:auto; margin-top:8px;">
                         </div>
@@ -358,9 +393,14 @@
                     <div class="card">
                         <label style="font-size:0.9rem; color:var(--text-light);">בחר ילד להענקת נקודות:</label>
                         <select id="award-child">
-                            <option value="child1">${appData.children.child1.name}</option>
-                            <option value="child2">${appData.children.child2.name}</option>
-                            <option value="child3">${appData.children.child3.name}</option>
+                `;
+
+                for (let key in appData.children) {
+                    let c = appData.children[key];
+                    html += `<option value="${key}">${c.name}</option>`;
+                }
+
+                html += `
                         </select>
 
                         <label style="font-size:0.9rem; color:var(--text-light);">בחר מטלה לביצוע:</label>
@@ -406,10 +446,15 @@
                 `;
 
                 view.innerHTML = html;
-                window.selectedHistChild = window.selectedHistChild || 'child1';
+                let firstKey = Object.keys(appData.children)[0];
+                window.selectedHistChild = window.selectedHistChild || firstKey;
                 renderParentHistory();
             } else {
                 let child = appData.children[currentUser];
+                if (!child) {
+                    backToLogin();
+                    return;
+                }
                 msg.innerText = `האזור האישי של ${child.name}`;
                 
                 let html = `
@@ -419,7 +464,6 @@
                         💡 <strong>שימו לב:</strong> נקודה אחת שווה 5 שקלים או 10 דקות מסך!
                     </div>
 
-                    <!-- הודעת בונוס מוצגת אם קיימת -->
                     ${appData.bonusMessage && appData.bonusMessage.text ? `
                         <div style="background: #fefce8; border: 1px solid #fde047; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
                             ⭐ <strong>הודעה מההורים:</strong> ${appData.bonusMessage.text}
@@ -463,6 +507,47 @@
             }
         }
 
+        function toggleSettingsPanel() {
+            const panel = document.getElementById('settings-panel');
+            const icon = document.getElementById('settings-toggle-icon');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                icon.innerText = '▲';
+            } else {
+                panel.style.display = 'none';
+                icon.innerText = '▼';
+            }
+        }
+
+        function addNewChildModal() {
+            const name = prompt('הכנס את שם הילד החדש:');
+            if (!name || !name.trim()) return;
+            const newKey = 'child_' + Date.now();
+            appData.children[newKey] = { name: name.trim(), points: 0, history: [] };
+            appData.pins[newKey] = '';
+            saveData();
+            renderDashboard();
+        }
+
+        function deleteChild(key) {
+            if (Object.keys(appData.children).length <= 1) {
+                alert('חייב להישאר לפחות ילד אחד במערכת.');
+                return;
+            }
+            if (confirm('האם למחוק ילד זה מהמערכת?')) {
+                delete appData.children[key];
+                delete appData.pins[key];
+                saveData();
+                renderDashboard();
+            }
+        }
+
+        function updateChildNameFromParent(key, newName) {
+            if (!newName.trim()) return;
+            appData.children[key].name = newName.trim();
+            saveData();
+        }
+
         function parentUpdatePin(key) {
             const val = document.getElementById(`parent-set-pin-${key}`).value.trim();
             if (val.length !== 4) {
@@ -481,7 +566,7 @@
                 alert('קוד הורים חייב להכיל לפחות 2 תווים.');
                 return;
             }
-            appData.pins.parent = val;
+            appData.parentPin = val;
             saveData();
             alert('קוד ההורים עודכן בהצלחה!');
         }
@@ -491,15 +576,14 @@
             if (!selectEl) return;
             window.selectedHistChild = selectEl.value;
             const container = document.getElementById('parent-history-container');
-            const historyList = appData.children[window.selectedHistChild].history;
-
-            if (!historyList || historyList.length === 0) {
+            const childObj = appData.children[window.selectedHistChild];
+            if (!childObj || !childObj.history || childObj.history.length === 0) {
                 container.innerHTML = `<p style="color:var(--text-light); font-size:0.9rem; text-align:center; margin:5px 0;">אין היסטוריה לילד זה.</p>`;
                 return;
             }
 
             let hHtml = '';
-            historyList.slice().reverse().forEach(item => {
+            childObj.history.slice().reverse().forEach(item => {
                 hHtml += `<div style="font-size:0.85rem; border-bottom:1px solid #f1f5f9; padding:6px 0; display:flex; justify-content:space-between;"><span>${item.text}</span><span style="color:var(--success); font-weight:bold;">${item.tag}</span></div>`;
             });
             container.innerHTML = hHtml;
@@ -526,7 +610,7 @@
             const taskId = parseInt(document.getElementById('award-task').value);
             const task = appData.tasks.find(t => t.id === taskId);
             
-            if (!task) return;
+            if (!task || !appData.children[childKey]) return;
 
             appData.children[childKey].points += task.points;
             let dateStr = new Date().toLocaleDateString('he-IL');
@@ -593,6 +677,13 @@
         function approveRedemption(index) {
             let req = appData.redemptionRequests[index];
             let child = appData.children[req.childKey];
+
+            if (!child) {
+                appData.redemptionRequests.splice(index, 1);
+                saveData();
+                renderDashboard();
+                return;
+            }
 
             if (child.points < req.amount) {
                 alert('לשחקן אין מספיק נקודות כרגע.');
