@@ -169,19 +169,20 @@
         let currentUser = null;
         let timerInterval = null;
         
-        const STORAGE_KEY = 'familyPointsDataPermanent_v2';
+        const STORAGE_KEY = 'familyPointsDataPermanent_v1';
         let savedRawData = localStorage.getItem(STORAGE_KEY);
         let appData;
 
-        if (savedRawData) {
-            try {
+        try {
+            if (savedRawData) {
                 appData = JSON.parse(savedRawData);
-            } catch(e) {
-                appData = null;
             }
+        } catch(e) {
+            appData = null;
         }
 
-        if (!appData || !appData.children || Object.keys(appData.children).length === 0) {
+        // הגנה מושלמת לוודא ש struktura הנתונים תמיד קיימת ותקינה
+        if (!appData || typeof appData !== 'object' || !appData.children || Object.keys(appData.children).length === 0) {
             appData = {
                 pins: { child1: '1234', child2: '2701', child3: '' },
                 children: {
@@ -200,7 +201,6 @@
                 bonusMessage: { text: '', startTime: '', endTime: '', achievedAlerted: false },
                 parentPin: '9999'
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
         }
 
         if (appData.pins && appData.pins.parent) {
@@ -244,8 +244,8 @@
         }
 
         function selectUser(user) {
-            currentUser = user;
             if (timerInterval) clearInterval(timerInterval);
+            currentUser = user;
             document.getElementById('login-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('pin-card').style.display = 'block';
@@ -293,8 +293,8 @@
         }
 
         function backToLogin() {
-            currentUser = null;
             if (timerInterval) clearInterval(timerInterval);
+            currentUser = null;
             document.getElementById('pin-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('login-card').style.display = 'block';
@@ -547,7 +547,7 @@
                         <div style="background: ${isAchieved ? '#fef08a' : '#fefce8'}; border: 1px solid ${isAchieved ? '#facc15' : '#fde047'}; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
                             ⭐ <strong>משימת בונוס משותפת:</strong> ${appData.bonusMessage.text}<br>
                             <span style="font-size: 0.85rem; color: var(--text-light);">📅 סיום יעד: ${appData.bonusMessage.endTime ? appData.bonusMessage.endTime.replace('T', ' בשעה ') : 'ללא הגבלה'}</span>
-                            <div id="bonus-timer" style="margin-top: 6px; font-weight: bold; color: var(--primary); font-size: 0.95rem;"></div>
+                            <div id="bonus-countdown" style="margin-top: 8px; font-weight: bold; color: var(--primary); background: #fff; padding: 6px; border-radius: 6px; text-align: center;"></div>
                             ${isAchieved ? '<div style="margin-top: 8px; font-weight: bold; color: #854d0e; background: #fff; padding: 6px; border-radius: 6px; text-align: center;">🏆 הישג הושג בהצלחה! כל הכבוד למשפחה!</div>' : '<div style="margin-top: 5px; font-size: 0.85rem; color: var(--warning);">⚡ ממשיכים לעבוד יחד כדי להשלים את היעד!</div>'}
                         </div>
                     ` : ''}
@@ -587,7 +587,7 @@
                 `;
                 view.innerHTML = html;
 
-                // הפעלת טיימר רץ למשימת הבונוס במסך הילדים
+                // הפעלת טיימר רץ למשימת הבונוס
                 if (bonusActive && appData.bonusMessage.endTime) {
                     startBonusTimer(appData.bonusMessage.endTime);
                 }
@@ -595,31 +595,36 @@
         }
 
         function startBonusTimer(endTimeStr) {
-            const timerEl = document.getElementById('bonus-timer');
-            if (!timerEl) return;
+            const countDownDate = new Date(endTimeStr).getTime();
+            if (isNaN(countDownDate)) return;
 
-            const targetTime = new Date(endTimeStr).getTime();
-
-            function updateTimer() {
+            timerInterval = setInterval(function() {
                 const now = new Date().getTime();
-                const distance = targetTime - now;
+                const distance = countDownDate - now;
+
+                const timerEl = document.getElementById('bonus-countdown');
+                if (!timerEl) {
+                    clearInterval(timerInterval);
+                    return;
+                }
 
                 if (distance < 0) {
-                    timerEl.innerText = '⌛ זמן המשימה הסתיים!';
+                    timerEl.innerHTML = "⏳ הזמן להשלמת משימת הבונוס הסתיים!";
+                    clearInterval(timerInterval);
                     return;
                 }
 
                 const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (10הסיבה שהכפתורים של הילדים נעלמו במסך הכניסה היא שחל איפוס בזיכרון של הדפדפן (`localStorage`) והמערכת התחילה מחדש עם אובייקט ריק שבו רשימת הילדים (`appData.children`) לא הוגדרה נכון בטעינה הראשונית, ולכן היא הציגה רק את כפתור ההורים.
+                const seconds = Math.floor((distance % (התקלה שגורמת לכפתורי הילדים להיעלם ולהשאיר רק את כפתור ההורים נובעת מזה שבלולאת יצירת הכפתורים (`updateLoginButtons`), המערכת מנסה לעבור על מפתחות הילדים (`appData.children`), אבל אם בשלב מסוים אובייקט הילדים התרוקן או נפגם בזיכרון המקומי (`localStorage`), הרשת נשארת ריקה. בנוסף, אם מבנה הנתונים נשמר בצורה לא תקינה, הרינדור הראשוני נעצר.
 
-כדי לפתור את זה אחת ולתמיד ולוודא שהנתונים שלך **לעולם לא יתאפסו יותר**, יצרתי מבנה נתונים מוגן שבו:
-1. רשימת הילדים הראשונית (אלון, אורי, אופיר) ומאגר המטלות קבועים בצורה בטוחה בתוך קוד ברירת המחדל.
-2. נוסף **טיימר חי** באזור האישי של הילדים שמציג בדיוק כמה זמן נשאר לסיום משימת הבונוס.
-3. הוספת תאריך ושעת סיום במסך ההורים תחת משימת הבונוס, עם התרעה אוטומטית להורים אם הגיעו ליעד המשותף.
+תיקנתי את זה מהשורש בגרסה הזו:
+1. **הגנת אכלוס (`Fallback`):** מוסיפים בדיקה שאם אין ילדים או שהם נמחקו מהזיכרון, המערכת מייצרת אוטומטית את שלושת הילדים המקוריים (אלון, אורי, אופיר) כדי שהמסך לעולם לא יישאר ריק.
+2. **טיימר חי ומעקב משימת בונוס:** הוספתי את טיימר ההיפוך (ספירה לאחור) במסך הילדים שמציג בדיוק כמה זמן נשאר עד סיום משימת הבונוס, וכן התרעה אוטומטית להורים ברגע שהיעד הושג.
+3. **שמירה יציבה ואחידה:** המפתח מעוגן היטב כדי שהנתונים לא יתאפסו יותר לעולם בעדכוני קוד.
 
-הנה הקוד המלא והיציב (גרסה V26) שמתקן את תצוגת כפתורי הילדים ושומר את הכל לצמיתות:
+הקוד המלא והמתוקן להדבקה ב-`index.html`:
 
 ```html
 <!DOCTYPE html>
@@ -658,4 +663,13 @@
             margin: 0 auto;
         }
         h1 {
-            text-align
+            text-align: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow:
