@@ -115,7 +115,7 @@
             margin: 0;
             padding: 0;
         }
-        .task-item, .history-item {
+        .task-item {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             padding: 12px;
@@ -161,7 +161,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV7')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV8')) || {
             pins: { child1: '1111', child2: '2222', child3: '3333', parent: '9999' },
             children: {
                 child1: { name: 'אלון', points: 50, history: [] },
@@ -187,21 +187,25 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV7', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV8', JSON.stringify(appData));
             updateButtonNames();
         }
 
         function updateButtonNames() {
-            if (appData.children.child1) document.getElementById('btn-child1').innerText = appData.children.child1.name;
-            if (appData.children.child2) document.getElementById('btn-child2').innerText = appData.children.child2.name;
-            if (appData.children.child3) document.getElementById('btn-child3').innerText = appData.children.child3.name;
+            try {
+                if (appData.children.child1) document.getElementById('btn-child1').innerText = appData.children.child1.name;
+                if (appData.children.child2) document.getElementById('btn-child2').innerText = appData.children.child2.name;
+                if (appData.children.child3) document.getElementById('btn-child3').innerText = appData.children.child3.name;
+            } catch (e) {}
         }
 
-        window.onload = updateButtonNames;
+        window.onload = function() {
+            updateButtonNames();
+        };
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV7');
+                localStorage.removeItem('familyPointsDataV8');
                 location.reload();
             }
         }
@@ -222,7 +226,9 @@
         }
 
         function verifyPin() {
-            const enteredPin = document.getElementById('pin-input'].value.trim();
+            const inputEl = document.getElementById('pin-input');
+            if (!inputEl) return;
+            const enteredPin = inputEl.value.trim();
             const correctPin = appData.pins[currentUser];
             
             if (enteredPin === correctPin) {
@@ -258,7 +264,7 @@
                     html += `
                         <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px;">
                             <label style="font-size:0.85rem; color:var(--text-light);">שם הילד:</label>
-                            <input type="text" value="${child.name}" onchange="updateChildName('${key}', this.value)">
+                            <input type="text" id="name-input-${key}" value="${child.name}" onchange="updateChildName('${key}', this.value)">
                             
                             <label style="font-size:0.85rem; color:var(--text-light);">קוד אישי לילד (4 ספרות):</label>
                             <input type="text" maxlength="4" value="${childPin}" onchange="updatePin('${key}', this.value)" placeholder="הקש קוד חדש">
@@ -345,7 +351,7 @@
                                     <strong>${task.title}</strong>
                                     <div style="color:var(--success); font-size:0.9rem;">+${task.points} נקודות</div>
                                 </div>
-                                <button style="width:auto; padding:8px 12px; margin:0;" onclick="completeTask('${task.title}', ${task.points})">בצעתי!</button>
+                                <button style="width:auto; padding:8px 12px; margin:0;" onclick="completeTask('${task.title.replace(/'/g, "\\'")}', ${task.points})">בצעתי!</button>
                             </div>
                         `;
                     });
@@ -374,12 +380,12 @@
         }
 
         function updateChildName(childKey, newName) {
-            appData.children[childKey].name = newName;
+            appData.children[childKey].name = newName.trim();
             saveData();
         }
 
         function updatePin(userKey, newPin) {
-            if (!newPin || newPin.length < 2) {
+            if (!newPin || newPin.trim().length < 2) {
                 alert('הקוד חייב להכיל לפחות 2 תווים.');
                 return;
             }
@@ -389,7 +395,9 @@
         }
 
         function updateMyPin() {
-            const newPin = document.getElementById('new-child-pin').value.trim();
+            const inputEl = document.getElementById('new-child-pin');
+            if (!inputEl) return;
+            const newPin = inputEl.value.trim();
             if (newPin.length !== 4) {
                 alert('הקוד חייב להיות בדיוק באורך 4 ספרות.');
                 return;
@@ -397,7 +405,7 @@
             appData.pins[currentUser] = newPin;
             saveData();
             alert('הקוד האישי עודכן בהצלחה!');
-            document.getElementById('new-child-pin').value = '';
+            inputEl.value = '';
         }
 
         function modifyPoints(childKey, amount) {
@@ -411,7 +419,7 @@
 
         function giveCustomBonus() {
             const childKey = document.getElementById('bonus-child-select').value;
-            const reason = document.getElementById('bonus-reason').value;
+            const reason = document.getElementById('bonus-reason').value.trim();
             const pts = parseInt(document.getElementById('bonus-pts').value);
 
             if (!reason || isNaN(pts)) {
@@ -427,7 +435,7 @@
         }
 
         function addNewTask() {
-            const title = document.getElementById('new-task-title').value;
+            const title = document.getElementById('new-task-title').value.trim();
             const pts = parseInt(document.getElementById('new-task-pts').value);
             if (!title || isNaN(pts)) {
                 alert('נא למלא את שם המשימה וכמות הנקודות.');
