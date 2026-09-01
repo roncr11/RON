@@ -95,13 +95,25 @@
             display: flex;
             gap: 8px;
         }
-        .badge {
-            background: var(--danger);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            margin-right: 5px;
+        .password-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-container input {
+            margin-bottom: 0;
+        }
+        .toggle-password {
+            position: absolute;
+            left: 12px;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: auto;
+            margin: 0;
+            padding: 0;
         }
     </style>
 </head>
@@ -117,13 +129,17 @@
                 <button class="user-btn" id="btn-child3" onclick="selectUser('child3')">אופיר</button>
                 <button class="user-btn" onclick="selectUser('parent')">הורים 🔒</button>
             </div>
+            <button style="background-color: var(--warning); margin-top: 15px;" onclick="resetAllData()">איפוס כללי (למקרה חירום)</button>
         </div>
 
         <div class="card" id="pin-card" style="display: none;">
             <h3 id="pin-title">הזן קוד סודי (PIN):</h3>
-            <input type="password" id="pin-input" placeholder="הקש קוד..." maxlength="4">
-            <button onclick="verifyPin()">הכנס</button>
-            <button style="background-color: var(--text-light);" onclick="backToLogin()">חזרה</button>
+            <div class="password-container">
+                <input type="password" id="pin-input" placeholder="הקש קוד..." maxlength="6">
+                <button type="button" class="toggle-password" onclick="togglePinVisibility()">👁️</button>
+            </div>
+            <button onclick="verifyPin()" style="margin-top: 15px;">הכנס</button>
+            <button style="background-color: var(--text-light);" onclick="backToLogin()">חזרה לתפריט הראשי</button>
         </div>
 
         <div class="card" id="app-content" style="display: none;">
@@ -135,9 +151,9 @@
 
     <script>
         let currentUser = null;
-        const pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV2')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV4')) || {
+            pins: { child1: '1111', child2: '2222', child3: '3333', parent: '9999' },
             children: {
                 child1: { name: 'אלון', points: 50 },
                 child2: { name: 'אורי', points: 40 },
@@ -147,12 +163,15 @@
                 { id: 1, title: 'סידור חדר', points: 15 },
                 { id: 2, title: 'הכנת שיעורי בית', points: 20 },
                 { id: 3, title: 'עזרה בשטיפת כלים', points: 10 }
-            ],
-            requests: [] // בקשות של ילדים לאישור נקודות/פרסים
+            ]
         };
 
+        if (!appData.pins) {
+            appData.pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
+        }
+
         function saveData() {
-            localStorage.setItem('familyPointsDataV2', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV4', JSON.stringify(appData));
             updateButtonNames();
         }
 
@@ -164,22 +183,38 @@
 
         window.onload = updateButtonNames;
 
+        function resetAllData() {
+            if (confirm('האם לאפס את כל ההגדרות והקודים לברירת המחדל?')) {
+                localStorage.removeItem('familyPointsDataV4');
+                location.reload();
+            }
+        }
+
         function selectUser(user) {
             currentUser = user;
             document.getElementById('login-card').style.display = 'none';
+            document.getElementById('app-content').style.display = 'none';
             document.getElementById('pin-card').style.display = 'block';
-            document.getElementById('pin-title').innerText = user === 'parent' ? 'הזן קוד הורים (9999):' : 'הזן קוד אישי:';
+            document.getElementById('pin-title').innerText = user === 'parent' ? 'הזן קוד הורים (ברירת מחדל 9999):' : 'הזן קוד אישי:';
             document.getElementById('pin-input').value = '';
+            document.getElementById('pin-input').type = 'password';
+        }
+
+        function togglePinVisibility() {
+            const input = document.getElementById('pin-input');
+            input.type = input.type === 'password' ? 'text' : 'password';
         }
 
         function verifyPin() {
             const enteredPin = document.getElementById('pin-input').value.trim();
-            if (enteredPin === pins[currentUser]) {
+            const correctPin = appData.pins[currentUser];
+            
+            if (enteredPin === correctPin) {
                 document.getElementById('pin-card').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
                 renderDashboard();
             } else {
-                alert('קוד שגוי, נסה שוב.');
+                alert(`קוד שגוי. הקוד המוגדר למשתמש זה הוא: ${correctPin}`);
             }
         }
 
@@ -199,14 +234,19 @@
                 msg.innerHTML = 'לוח בקרה הורים 👨‍👩‍👧‍👦';
                 
                 let html = `<div style="margin-bottom:20px;">
-                    <h3>ניהול ילדים ונקודות:</h3>`;
+                    <h3>ניהול ילדים, נקודות וקודים:</h3>`;
                 
                 for (let key in appData.children) {
                     let child = appData.children[key];
+                    let childPin = appData.pins[key] || '';
                     html += `
-                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:10px;">
+                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px;">
                             <label style="font-size:0.85rem; color:var(--text-light);">שם הילד:</label>
                             <input type="text" value="${child.name}" onchange="updateChildName('${key}', this.value)">
+                            
+                            <label style="font-size:0.85rem; color:var(--text-light);">קוד אישי לילד:</label>
+                            <input type="text" value="${childPin}" onchange="updatePin('${key}', this.value)" placeholder="הקש קוד חדש">
+
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
                                 <span>נקודות: <strong>${child.points}</strong></span>
                             </div>
@@ -220,8 +260,12 @@
                     `;
                 }
 
-                // ניהול משימות והענקת בונוסים כלליים
                 html += `</div>
+                    <div style="background:#e2e8f0; padding:12px; border-radius:8px; margin-bottom:20px;">
+                        <h3>שינוי קוד הורים 🔒:</h3>
+                        <input type="text" value="${appData.pins.parent}" onchange="updatePin('parent', this.value)" placeholder="קוד הורים חדש">
+                    </div>
+
                     <div style="border-top: 2px solid #e2e8f0; padding-top: 15px;">
                         <h3>הוספת משימה חדשה למערכת:</h3>
                         <input type="text" id="new-task-title" placeholder="שם המשימה (למשל: פינוי שולחן)">
@@ -247,7 +291,7 @@
                 if (appData.tasks.length === 0) {
                     html += `<p style="color:var(--text-light);">אין משימות זמינות כרגע.</p>`;
                 } else {
-                    appData.tasks.forEach((task, index) => {
+                    appData.tasks.forEach((task) => {
                         html += `
                             <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
                                 <div>
@@ -268,6 +312,16 @@
         function updateChildName(childKey, newName) {
             appData.children[childKey].name = newName;
             saveData();
+        }
+
+        function updatePin(userKey, newPin) {
+            if (!newPin || newPin.length < 2) {
+                alert('הקוד חייב להכיל לפחות 2 תווים.');
+                return;
+            }
+            appData.pins[userKey] = newPin.trim();
+            saveData();
+            alert('הקוד עודכן בהצלחה!');
         }
 
         function modifyPoints(childKey, amount) {
