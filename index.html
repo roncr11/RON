@@ -167,7 +167,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV15')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV16')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -200,7 +200,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV15', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV16', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -221,7 +221,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV15');
+                localStorage.removeItem('familyPointsDataV16');
                 location.reload();
             }
         }
@@ -410,7 +410,10 @@
 
                 html += `
                         </select>
-                        <button onclick="awardTaskToChild()">הענק נקודות לילד</button>
+                        <div class="flex-row" style="margin-top:8px;">
+                            <button style="background-color: var(--success);" onclick="awardTaskToChild()">הענק נקודות (+)</button>
+                            <button style="background-color: var(--danger);" onclick="deductTaskFromChild()">הורד נקודה (-)</button>
+                        </div>
                     </div>
 
                     <div class="card">
@@ -423,14 +426,15 @@
                     </div>
 
                     <div class="card">
-                        <h3 style="margin-top:0;">מאגר מטלות קיימות:</h3>
+                        <h3 style="margin-top:0;">מאגר מטלות קיימות (עריכה ומחיקה):</h3>
                 `;
 
-                appData.tasks.forEach(t => {
+                appData.tasks.forEach((t, index) => {
                     html += `
                         <div class="task-row">
-                            <strong>${t.title}</strong>
-                            <span class="pin-pill">${t.points} נק'</span>
+                            <input type="text" value="${t.title}" style="width:130px; margin:0; padding:6px;" onchange="updateTaskTitle(${t.id}, this.value)">
+                            <input type="number" value="${t.points}" style="width:70px; margin:0; padding:6px;" onchange="updateTaskPoints(${t.id}, this.value)">
+                            <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteTask(${t.id})">מחק</button>
                         </div>
                     `;
                 });
@@ -625,6 +629,21 @@
             renderDashboard();
         }
 
+        function deductTaskFromChild() {
+            const childKey = document.getElementById('award-child').value;
+            const taskId = parseInt(document.getElementById('award-task').value);
+            const task = appData.tasks.find(t => t.id === taskId);
+            
+            if (!task || !appData.children[childKey]) return;
+
+            appData.children[childKey].points -= task.points;
+            let dateStr = new Date().toLocaleDateString('he-IL');
+            appData.children[childKey].history.push({ text: `הורדת נקודות (${task.title}) (${dateStr})`, tag: `-${task.points} נק'` });
+            saveData();
+            alert(`הופחתו ${task.points} נקודות מ-${appData.children[childKey].name}!`);
+            renderDashboard();
+        }
+
         function addNewTask() {
             const title = document.getElementById('task-title-input').value.trim();
             const pts = parseInt(document.getElementById('task-pts-input').value);
@@ -636,6 +655,31 @@
             saveData();
             alert('המטלה נוספה למאגר בהצלחה!');
             renderDashboard();
+        }
+
+        function updateTaskTitle(id, newTitle) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (task && newTitle.trim()) {
+                task.title = newTitle.trim();
+                saveData();
+            }
+        }
+
+        function updateTaskPoints(id, newPts) {
+            const task = appData.tasks.find(t => t.id === id);
+            const pts = parseInt(newPts);
+            if (task && !isNaN(pts)) {
+                task.points = pts;
+                saveData();
+            }
+        }
+
+        function deleteTask(id) {
+            if (confirm('האם למחוק מטלה זו מהמאגר?')) {
+                appData.tasks = appData.tasks.filter(t => t.id !== id);
+                saveData();
+                renderDashboard();
+            }
         }
 
         function updateMyPin() {
