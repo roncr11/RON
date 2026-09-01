@@ -145,7 +145,7 @@
             <h3>בחר משתמש לכניסה:</h3>
             <div class="user-select-grid" id="login-user-grid"></div>
             <button class="user-btn" style="width:100%; margin-top:5px;" onclick="selectUser('parent')">הורים 🔒</button>
-            <button style="background-color: var(--warning); margin-top: 15px;" onclick="resetAllData()">איפוס כללי (למקרה חירום)</button>
+            <button style="background-color: var(--warning); margin-top: 15px;" onclick="resetAllData()">איפוס כללי (למצב ברירת מחדל)</button>
         </div>
 
         <div class="card" id="pin-card" style="display: none;">
@@ -167,7 +167,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV14')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV15')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -200,7 +200,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV14', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV15', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -220,8 +220,8 @@
         };
 
         function resetAllData() {
-            if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV14');
+            if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
+                localStorage.removeItem('familyPointsDataV15');
                 location.reload();
             }
         }
@@ -330,10 +330,13 @@
                         <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #e2e8f0;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                                 <input type="text" value="${child.name}" style="width:120px; margin:0; padding:6px;" onchange="updateChildNameFromParent('${key}', this.value)">
-                                <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteChild('${key}')">מחק ילד</button>
+                                <div style="display:flex; gap:5px;">
+                                    <button style="width:auto; background-color:var(--warning); padding:6px 10px; margin:0;" onclick="resetChildPoints('${key}')">איפוס נקודות</button>
+                                    <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteChild('${key}')">מחק</button>
+                                </div>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span>קוד: <span class="pin-pill">${pinVal}</span></span>
+                                <span>קוד: <span class="pin-pill">${pinVal}</span> (נק': ${child.points})</span>
                                 <div>
                                     <input type="text" maxlength="4" placeholder="שנה קוד" style="width:90px; display:inline-block; margin:0 5px; padding:6px;" id="parent-set-pin-${key}">
                                     <button style="width:auto; padding:6px 10px; margin:0;" onclick="parentUpdatePin('${key}')">עדכן</button>
@@ -508,6 +511,16 @@
             } else {
                 panel.style.display = 'none';
                 icon.innerText = '▼';
+            }
+        }
+
+        function resetChildPoints(key) {
+            if (confirm(`האם לאפס את הנקודות וההיסטוריה עבור ${appData.children[key].name}?`)) {
+                appData.children[key].points = 0;
+                appData.children[key].history.push({ text: `איפוס נקודות על ידי ההורים (${new Date().toLocaleDateString('he-IL')})`, tag: 'איפוס' });
+                saveData();
+                alert('הנקודות אופסו בהצלחה!');
+                renderDashboard();
             }
         }
 
