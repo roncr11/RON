@@ -128,7 +128,7 @@
         .task-row {
             background: #ffffff;
             border: 1px solid #cbd5e1;
-            padding: 12px;
+            padding: 10px;
             border-radius: 8px;
             margin-bottom: 8px;
             display: flex;
@@ -168,7 +168,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV21')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV22')) || {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
                 child1: { name: 'אלון', points: 1, history: [] },
@@ -201,7 +201,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV21', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV22', JSON.stringify(appData));
             updateLoginButtons();
         }
 
@@ -222,7 +222,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV21');
+                localStorage.removeItem('familyPointsDataV22');
                 location.reload();
             }
         }
@@ -420,9 +420,9 @@
                     <div class="card">
                         <h3 style="margin-top:0;">הוספת מטלה חדשה למאגר</h3>
                         <label style="font-size:0.9rem; color:var(--text-light);">שם המטלה:</label>
-                        <input type="text" id="new-task-title" placeholder="למשל: פינוי מדיח">
+                        <input type="text" id="parent-new-task-title" placeholder="למשל: פינוי מדיח">
                         <label style="font-size:0.9rem; color:var(--text-light);">ערך נקודות:</label>
-                        <input type="number" id="new-task-pts" placeholder="2">
+                        <input type="number" id="parent-new-task-pts" placeholder="2">
                         <button onclick="addNewTask()">הוסף מטלה למאגר</button>
                     </div>
 
@@ -433,14 +433,15 @@
                 appData.tasks.forEach((t) => {
                     html += `
                         <div class="task-row">
-                            <input type="text" value="${t.title}" style="flex:2; margin:0; padding:6px;" onchange="updateTaskTitle(${t.id}, this.value)">
-                            <input type="number" value="${t.points}" style="flex:1; margin:0; padding:6px;" onchange="updateTaskPoints(${t.id}, this.value)">
+                            <input type="text" id="task-name-${t.id}" value="${t.title}" style="flex:2; margin:0; padding:6px;">
+                            <input type="number" id="task-pts-${t.id}" value="${t.points}" style="flex:1; margin:0; padding:6px;">
                             <button style="width:auto; background-color:var(--danger); padding:6px 10px; margin:0;" onclick="deleteTask(${t.id})">מחק</button>
                         </div>
                     `;
                 });
 
                 html += `
+                        <button style="background-color: var(--success); margin-top: 12px;" onclick="saveAllTasksChanges()">💾 שמור שינויים במאגר המטלות</button>
                     </div>
                     <button style="background-color: var(--danger); margin-top: 15px;" onclick="backToLogin()">התנתק</button>
                 `;
@@ -661,8 +662,8 @@
         }
 
         function addNewTask() {
-            const titleEl = document.getElementById('new-task-title');
-            const ptsEl = document.getElementById('new-task-pts');
+            const titleEl = document.getElementById('parent-new-task-title');
+            const ptsEl = document.getElementById('parent-new-task-pts');
             
             if (!titleEl || !ptsEl) {
                 alert('שגיאה באיתור שדות הקלט.');
@@ -683,21 +684,20 @@
             renderDashboard();
         }
 
-        function updateTaskTitle(id, newTitle) {
-            const task = appData.tasks.find(t => t.id === id);
-            if (task && newTitle.trim()) {
-                task.title = newTitle.trim();
-                saveData();
-            }
-        }
-
-        function updateTaskPoints(id, newPts) {
-            const task = appData.tasks.find(t => t.id === id);
-            const pts = parseInt(newPts);
-            if (task && !isNaN(pts)) {
-                task.points = pts;
-                saveData();
-            }
+        function saveAllTasksChanges() {
+            appData.tasks.forEach(t => {
+                const nameEl = document.getElementById(`task-name-${t.id}`);
+                const ptsEl = document.getElementById(`task-pts-${t.id}`);
+                if (nameEl && ptsEl) {
+                    let newTitle = nameEl.value.trim();
+                    let newPts = parseInt(ptsEl.value);
+                    if (newTitle) t.title = newTitle;
+                    if (!isNaN(newPts)) t.points = newPts;
+                }
+            });
+            saveData();
+            alert('שינויי המאגר נשמרו בהצלחה!');
+            renderDashboard();
         }
 
         function deleteTask(id) {
