@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
+    <!-- אייקון שיופיע על מסך הבית בפלאפון -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+    <!-- הגדרות שרוטמות לאפליקציה להיפתח במסך מלא בלי שורת כתובת של דפדפן -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="נקודות משפחתי">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ניהול נקודות משפחתי</title>
@@ -14,6 +22,7 @@
             --text-light: #64748b;
             --success: #10b981;
             --danger: #ef4444;
+            --warning: #f59e0b;
         }
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -36,29 +45,8 @@
             background: var(--card-bg);
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .leaderboard-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .leaderboard-item:last-child {
-            border-bottom: none;
-        }
-        .name {
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        .points {
-            background: #e0e7ff;
-            color: var(--primary);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: bold;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 16px;
         }
         button {
             background-color: var(--primary);
@@ -66,11 +54,11 @@
             border: none;
             padding: 10px 16px;
             border-radius: 8px;
-            font-size: 1rem;
+            font-weight: bold;
             cursor: pointer;
             width: 100%;
-            font-weight: bold;
-            transition: background 0.2s;
+            margin-top: 10px;
+            font-size: 1rem;
         }
         button:hover {
             background-color: var(--primary-hover);
@@ -78,146 +66,147 @@
         input, select {
             width: 100%;
             padding: 10px;
-            margin-top: 6px;
-            margin-bottom: 16px;
+            margin: 8px 0 16px 0;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             box-sizing: border-box;
             font-size: 1rem;
         }
-        label {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--text-light);
+        .user-select-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
         }
-        .hidden {
-            display: none;
-        }
-        .toggle-btn {
-            background: transparent;
+        .user-btn {
+            background: white;
+            border: 2px solid var(--primary);
             color: var(--primary);
-            border: 1px solid var(--primary);
-            margin-top: 10px;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-align: center;
         }
-        .toggle-btn:hover {
-            background: #e0e7ff;
-            color: var(--primary);
+        .user-btn:hover, .user-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .flex-row {
+            display: flex;
+            gap: 10px;
         }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>🏆 דירוג הניקוד המשפחתי</h1>
-
-    <!-- Leaderboard View -->
-    <div class="card">
-        <h3>לוח המובילים</h3>
-        <div id="leaderboardList"></div>
-    </div>
-
-    <!-- Parent Section Toggle -->
-    <div class="card">
-        <div id="loginSection">
-            <h3>אזור הורים</h3>
-            <label for="password">הכנס קוד סיסמה (ברירת מחדל: 1234):</label>
-            <input type="password" id="password" placeholder="קוד סיסמה">
-            <button onclick="parentLogin()">כניסה לניהול</button>
-        </div>
-
-        <div id="adminSection" class="hidden">
-            <h3>ניהול נקודות (הורים)</h3>
-            
-            <label for="selectKid">בחר ילד:</label>
-            <select id="selectKid">
-                <option value="אלון">אלון</option>
-                <option value="אורי">אורי</option>
-                <option value="אופיר">אופיר</option>
-            </select>
-
-            <label for="selectTask">בחר מטלה:</label>
-            <select id="selectTask">
-                <option value="סידור חדר (3 נקודות)">סידור חדר (3 נקודות)</option>
-                <option value="הכנת שיעורים (2 נקודות)">הכנת שיעורים (2 נקודות)</option>
-                <option value="עזרה בהדחת כלים (1 נקודות)">עזרה בהדחת כלים (1 נקודות)</option>
-                <option value="הימנעות ממסכים בערב (4 נקודות)">הימנעות ממסכים בערב (4 נקודות)</option>
-            </select>
-
-            <button onclick="addPoints()">הוסף נקודות לילד</button>
-            <button class="toggle-btn" onclick="parentLogout()">יציאה ממצב הורה</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Initial data setup in LocalStorage if not exists
-    let defaultScores = {
-        "אלון": 0,
-        "אורי": 0,
-        "אופיר": 0
-    };
-
-    function getScores() {
-        let scores = localStorage.getItem('family_scores');
-        return scores ? JSON.parse(scores) : defaultScores;
-    }
-
-    function saveScores(scores) {
-        localStorage.setItem('family_scores', JSON.stringify(scores));
-    }
-
-    function renderLeaderboard() {
-        let scores = getScores();
-        let listContainer = document.getElementById('leaderboardList');
-        listContainer.innerHTML = '';
-
-        // Sort kids by points descending
-        let sortedKids = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
-
-        sortedKids.forEach(kid => {
-            let item = document.createElement('div');
-            item.className = 'leaderboard-item';
-            item.innerHTML = `<span class="name">${kid}</span> <span class="points">${scores[kid]} נקודות</span>`;
-            listContainer.appendChild(item);
-        });
-    }
-
-    function parentLogin() {
-        let pass = document.getElementById('password').value;
-        if (pass === '1234') {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('adminSection').classList.remove('hidden');
-            document.getElementById('password').value = '';
-        } else {
-            alert('קוד סיסמה שגוי!');
-        }
-    }
-
-    function parentLogout() {
-        document.getElementById('adminSection').classList.add('hidden');
-        document.getElementById('loginSection').classList.remove('hidden');
-    }
-
-    function addPoints() {
-        let kid = document.getElementById('selectKid').value;
-        let taskElement = document.getElementById('selectTask');
-        let taskText = taskElement.value;
+    <div class="container">
+        <h1>⭐ ניהול נקודות משפחתי ⭐</h1>
         
-        // Extract points from string (e.g., "(3 נקודות)")
-        let pointsMatch = taskText.match(/\((\d+)/);
-        let pointsToAdd = pointsMatch ? parseInt(pointsMatch[1]) : 1;
+        <div class="card" id="login-card">
+            <h3>בחר משתמש לכניסה:</h3>
+            <div class="user-select-grid">
+                <button class="user-btn" onclick="selectUser('child1')">ילד 1</button>
+                <button class="user-btn" onclick="selectUser('child2')">ילד 2</button>
+                <button class="user-btn" onclick="selectUser('child3')">ילד 3</button>
+                <button class="user-btn" onclick="selectUser('parent')">הורים 🔒</button>
+            </div>
+        </div>
 
-        let scores = getScores();
-        scores[kid] = (scores[kid] || 0) + pointsToAdd;
-        saveScores(scores);
+        <div class="card" id="pin-card" style="display: none;">
+            <h3 id="pin-title">הזן קוד סודי (PIN):</h3>
+            <input type="password" id="pin-input" placeholder="הקש קוד..." maxlength="4">
+            <button onclick="verifyPin()">הכנס</button>
+            <button style="background-color: var(--text-light);" onclick="backToLogin()">חזרה</button>
+        </div>
 
-        renderLeaderboard();
-        alert(`נוספו בהצלחה ${pointsToAdd} נקודות ל-${kid}!`);
-    }
+        <div class="card" id="app-content" style="display: none;">
+            <h2 id="welcome-msg">ברוך הבא</h2>
+            <div id="dynamic-view"></div>
+            <button style="background-color: var(--danger); margin-top: 20px;" onclick="backToLogin()">התנתק</button>
+        </div>
+    </div>
 
-    // Initial render on load
-    renderLeaderboard();
-</script>
+    <script>
+        let currentUser = null;
+        const pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
+        
+        // נתונים בסיסיים
+        let appData = JSON.parse(localStorage.getItem('familyPointsData')) || {
+            children: {
+                child1: { name: 'ילד 1', points: 50 },
+                child2: { name: 'ילד 2', points: 40 },
+                child3: { name: 'ילד 3', points: 60 }
+            }
+        };
 
+        function saveData() {
+            localStorage.setItem('familyPointsData', JSON.stringify(appData));
+        }
+
+        function selectUser(user) {
+            currentUser = user;
+            document.getElementById('login-card').style.display = 'none';
+            document.getElementById('pin-card').style.display = 'block';
+            document.getElementById('pin-title').innerText = user === 'parent' ? 'הזן קוד הורים:' : 'הזן קוד אישי:';
+            document.getElementById('pin-input').value = '';
+        }
+
+        function verifyPin() {
+            const enteredPin = document.getElementById('pin-input').value;
+            if (enteredPin === pins[currentUser]) {
+                document.getElementById('pin-card').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                renderDashboard();
+            } else {
+                alert('קוד שגוי, נסה שוב.');
+            }
+        }
+
+        function backToLogin() {
+            currentUser = null;
+            document.getElementById('pin-card').style.display = 'none';
+            document.getElementById('app-content').style.display = 'none';
+            document.getElementById('login-card').style.display = 'block';
+        }
+
+        function renderDashboard() {
+            const msg = document.getElementById('welcome-msg');
+            const view = document.getElementById('dynamic-view');
+
+            if (currentUser === 'parent') {
+                msg.innerText = 'לוח בקרה הורים 👨‍👩‍👧‍👦';
+                let html = `<h3>ניהול נקודות לילדים:</h3>`;
+                for (let key in appData.children) {
+                    let child = appData.children[key];
+                    html += `
+                        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px;">
+                            <strong>${child.name}</strong> - נקודות: <span id="pts-${key}">${child.points}</span>
+                            <div class="flex-row" style="margin-top:8px;">
+                                <button onclick="modifyPoints('${key}', 10)">+ 10</button>
+                                <button style="background-color:var(--danger);" onclick="modifyPoints('${key}', -10)">- 10</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                view.innerHTML = html;
+            } else {
+                let child = appData.children[currentUser];
+                msg.innerText = `שלום, ${child.name} 👋`;
+                view.innerHTML = `
+                    <div style="text-align:center; padding: 20px; background: #e0e7ff; border-radius: 12px;">
+                        <h3>יתרת הנקודות שלך:</h3>
+                        <p style="font-size: 2.5rem; font-weight: bold; color: var(--primary); margin: 0;">${child.points}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function modifyPoints(childKey, amount) {
+            appData.children[childKey].points += amount;
+            saveData();
+            renderDashboard();
+        }
+    </script>
 </body>
 </html>
