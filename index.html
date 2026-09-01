@@ -145,33 +145,35 @@
         <div class="card" id="app-content" style="display: none;">
             <h2 id="welcome-msg" style="font-size: 1.3rem;">ברוך הבא</h2>
             <div id="dynamic-view"></div>
-            <button style="background-color: var(--danger); margin-top: 25px;" onclick="backToLogin()">התנתק</button>
         </div>
     </div>
 
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV4')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV6')) || {
             pins: { child1: '1111', child2: '2222', child3: '3333', parent: '9999' },
             children: {
-                child1: { name: 'אלון', points: 50 },
-                child2: { name: 'אורי', points: 40 },
-                child3: { name: 'אופיר', points: 60 }
+                child1: { name: 'אלון', points: 50, history: [] },
+                child2: { name: 'אורי', points: 40, history: [] },
+                child3: { name: 'אופיר', points: 60, history: [] }
             },
             tasks: [
                 { id: 1, title: 'סידור חדר', points: 15 },
                 { id: 2, title: 'הכנת שיעורי בית', points: 20 },
                 { id: 3, title: 'עזרה בשטיפת כלים', points: 10 }
-            ]
+            ],
+            redemptionRequests: []
         };
 
-        if (!appData.pins) {
-            appData.pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
+        if (!appData.pins) appData.pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
+        if (!appData.redemptionRequests) appData.redemptionRequests = [];
+        for (let k in appData.children) {
+            if (!appData.children[k].history) appData.children[k].history = [];
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV4', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV6', JSON.stringify(appData));
             updateButtonNames();
         }
 
@@ -184,8 +186,8 @@
         window.onload = updateButtonNames;
 
         function resetAllData() {
-            if (confirm('האם לאפס את כל ההגדרות והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV4');
+            if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
+                localStorage.removeItem('familyPointsDataV6');
                 location.reload();
             }
         }
@@ -195,7 +197,7 @@
             document.getElementById('login-card').style.display = 'none';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('pin-card').style.display = 'block';
-            document.getElementById('pin-title').innerText = user === 'parent' ? 'הזן קוד הורים (ברירת מחדל 9999):' : 'הזן קוד אישי:';
+            document.getElementById('pin-title').innerText = user === 'parent' ? 'הזן קוד הורים (9999):' : 'הזן קוד אישי:';
             document.getElementById('pin-input').value = '';
             document.getElementById('pin-input').type = 'password';
         }
@@ -214,7 +216,7 @@
                 document.getElementById('app-content').style.display = 'block';
                 renderDashboard();
             } else {
-                alert(`קוד שגוי. הקוד המוגדר למשתמש זה הוא: ${correctPin}`);
+                alert('קוד שגוי, נסה שוב.');
             }
         }
 
@@ -244,8 +246,8 @@
                             <label style="font-size:0.85rem; color:var(--text-light);">שם הילד:</label>
                             <input type="text" value="${child.name}" onchange="updateChildName('${key}', this.value)">
                             
-                            <label style="font-size:0.85rem; color:var(--text-light);">קוד אישי לילד:</label>
-                            <input type="text" value="${childPin}" onchange="updatePin('${key}', this.value)" placeholder="הקש קוד חדש">
+                            <label style="font-size:0.85rem; color:var(--text-light);">קוד אישי לילד (4 ספרות):</label>
+                            <input type="text" maxlength="4" value="${childPin}" onchange="updatePin('${key}', this.value)" placeholder="הקש קוד חדש">
 
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
                                 <span>נקודות: <strong>${child.points}</strong></span>
@@ -263,48 +265,64 @@
                 html += `</div>
                     <div style="background:#e2e8f0; padding:12px; border-radius:8px; margin-bottom:20px;">
                         <h3>שינוי קוד הורים 🔒:</h3>
-                        <input type="text" value="${appData.pins.parent}" onchange="updatePin('parent', this.value)" placeholder="קוד הורים חדש">
+                        <input type="text" maxlength="6" value="${appData.pins.parent}" onchange="updatePin('parent', this.value)" placeholder="קוד הורים חדש">
                     </div>
 
-                    <div style="border-top: 2px solid #e2e8f0; padding-top: 15px;">
+                    <div style="border-top: 2px solid #e2e8f0; padding-top: 15px; margin-bottom:20px;">
                         <h3>הוספת משימה חדשה למערכת:</h3>
-                        <input type="text" id="new-task-title" placeholder="שם המשימה (למשל: פינוי שולחן)">
+                        <input type="text" id="new-task-title" placeholder="שם המשימה">
                         <input type="number" id="new-task-pts" placeholder="כמות נקודות">
-                        <button onclick="addNewTask()">הוסף משימה לרשימה</button>
+                        <button onclick="addNewTask()">הוסף משימה</button>
                     </div>
+
+                    <button style="background-color: var(--danger); margin-top: 15px;" onclick="backToLogin()">התנתק</button>
                 `;
 
                 view.innerHTML = html;
             } else {
                 let child = appData.children[currentUser];
-                msg.innerText = `שלום, ${child.name} 👋`;
+                msg.innerText = `האזור האישי של ${child.name}`;
                 
                 let html = `
-                    <div style="text-align:center; padding: 20px; background: #e0e7ff; border-radius: 12px; margin-bottom: 20px;">
-                        <h3 style="margin:0 0 10px 0;">יתרת הנקודות שלך:</h3>
-                        <p style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 0;">${child.points}</p>
+                    <p style="font-size: 1.1rem; font-weight: bold;">יתרה שלך: <span style="color:var(--primary);">${child.points}</span> נקודות</p>
+                    
+                    <div style="background: #eef2ff; border: 1px solid #c7d2fe; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95rem;">
+                        💡 <strong>שימו לב:</strong> נקודה אחת שווה 5 שקלים או 10 דקות מסך!
                     </div>
-                    <h3>משימות זמינות לצבירת נקודות:</h3>
-                    <div id="tasks-list">
+
+                    <div class="card" style="border: 1px solid #cbd5e1; box-shadow:none; padding:12px; margin-bottom:15px;">
+                        <label style="font-size:0.9rem; color:var(--text-light);">כמות נקודות למימוש (מינימום 4):</label>
+                        <input type="number" id="redeem-amount" value="4" min="4">
+                        
+                        <label style="font-size:0.9rem; color:var(--text-light);">צורת מימוש מועדפת:</label>
+                        <select id="redeem-type">
+                            <option value="כסף (5 ₪ לכל נקודה)">כסף (5 ₪ לכל נקודה)</option>
+                            <option value="דקות מסך (10 דקות לכל נקודה)">דקות מסך (10 דקות לכל נקודה)</option>
+                        </select>
+                        <button onclick="submitRedemption()">הגש בקשת מימוש להורים</button>
+                    </div>
+
+                    <div class="card" style="border: 1px solid #cbd5e1; box-shadow:none; padding:12px; margin-bottom:15px;">
+                        <label style="font-size:0.9rem; color:var(--text-light);">שינוי קוד אישי (4 ספרות חדשות):</label>
+                        <input type="password" id="new-child-pin" maxlength="4" placeholder="הכנס קוד חדש">
+                        <button style="background-color: #0ea5e9;" onclick="updateMyPin()">עדכן קוד אישי</button>
+                    </div>
+
+                    <h3>היסטוריה שלי:</h3>
+                    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px; max-height:180px; overflow-y:auto; margin-bottom:20px;">
                 `;
 
-                if (appData.tasks.length === 0) {
-                    html += `<p style="color:var(--text-light);">אין משימות זמינות כרגע.</p>`;
+                if (!child.history || child.history.length === 0) {
+                    html += `<p style="color:var(--text-light); font-size:0.9rem; text-align:center;">אין עדיין היסטוריה.</p>`;
                 } else {
-                    appData.tasks.forEach((task) => {
-                        html += `
-                            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <strong>${task.title}</strong>
-                                    <div style="color:var(--success); font-size:0.9rem;">+${task.points} נקודות</div>
-                                </div>
-                                <button style="width:auto; padding:8px 12px; margin:0;" onclick="completeTask(${task.points})">בצעתי!</button>
-                            </div>
-                        `;
+                    child.history.slice().reverse().forEach(item => {
+                        html += `<div style="font-size:0.9rem; border-bottom:1px solid #f1f5f9; padding:8px 0; display:flex; justify-content:space-between;"><span>${item.text}</span><span style="color:var(--success); font-weight:bold;">${item.tag}</span></div>`;
                     });
                 }
 
-                html += `</div>`;
+                html += `</div>
+                    <button onclick="backToLogin()">חזרה לדף הראשי</button>
+                `;
                 view.innerHTML = html;
             }
         }
@@ -324,9 +342,45 @@
             alert('הקוד עודכן בהצלחה!');
         }
 
+        function updateMyPin() {
+            const newPin = document.getElementById('new-child-pin').value.trim();
+            if (newPin.length !== 4) {
+                alert('הקוד חייב להיות בדיוק באורך 4 ספרות.');
+                return;
+            }
+            appData.pins[currentUser] = newPin;
+            saveData();
+            alert('הקוד האישי עודכן בהצלחה!');
+            document.getElementById('new-child-pin').value = '';
+        }
+
         function modifyPoints(childKey, amount) {
             appData.children[childKey].points += amount;
+            let actionText = amount > 0 ? `הורים הוסיפו ${amount} נקודות` : `הורים הפחיתו ${Math.abs(amount)} נקודות`;
+            let tag = amount > 0 ? `+${amount} נק'` : `${amount} נק'`;
+            appData.children[childKey].history.push({ text: `${actionText} (${new Date().toLocaleDateString('he-IL')})`, tag: tag });
             saveData();
+            renderDashboard();
+        }
+
+        function submitRedemption() {
+            const amount = parseInt(document.getElementById('redeem-amount').value);
+            const type = document.getElementById('redeem-type').value;
+            let child = appData.children[currentUser];
+
+            if (isNaN(amount) || amount < 4) {
+                alert('מינימום נקודות למימוש הוא 4.');
+                return;
+            }
+            if (child.points < amount) {
+                alert('אין לך מספיק נקודות למימוש כמות זו.');
+                return;
+            }
+
+            child.points -= amount;
+            child.history.push({ text: `בקשת מימוש: ${amount} נקודות עבור ${type} (${new Date().toLocaleDateString('he-IL')})`, tag: `-${amount} נק'` });
+            saveData();
+            alert('בקשת המימוש הוגשה בהצלחה!');
             renderDashboard();
         }
 
@@ -340,13 +394,6 @@
             appData.tasks.push({ id: Date.now(), title: title, points: pts });
             saveData();
             alert('המשימה נוספה בהצלחה!');
-            renderDashboard();
-        }
-
-        function completeTask(pts) {
-            appData.children[currentUser].points += pts;
-            saveData();
-            alert(`כל הכבוד! נוספו לך ${pts} נקודות.`);
             renderDashboard();
         }
     </script>
