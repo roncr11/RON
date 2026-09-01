@@ -161,7 +161,7 @@
     <script>
         let currentUser = null;
         
-        let appData = JSON.parse(localStorage.getItem('familyPointsDataV8')) || {
+        let appData = JSON.parse(localStorage.getItem('familyPointsDataV9')) || {
             pins: { child1: '1111', child2: '2222', child3: '3333', parent: '9999' },
             children: {
                 child1: { name: 'אלון', points: 50, history: [] },
@@ -173,21 +173,18 @@
                 { id: 2, title: 'הכנת שיעורי בית', points: 20 },
                 { id: 3, title: 'עזרה בשטיפת כלים', points: 10 }
             ],
-            rewards: [
-                { id: 1, title: 'זמן מסך נוסף (30 דק\')', points: 50 },
-                { id: 2, title: 'בחירת ארוחת ערב', points: 100 }
-            ]
+            pendingApprovals: [] // בקשות ממתינות לאישור הורים
         };
 
         if (!appData.pins) appData.pins = { child1: '1111', child2: '2222', child3: '3333', parent: '9999' };
         if (!appData.tasks) appData.tasks = [];
-        if (!appData.rewards) appData.rewards = [];
+        if (!appData.pendingApprovals) appData.pendingApprovals = [];
         for (let k in appData.children) {
             if (!appData.children[k].history) appData.children[k].history = [];
         }
 
         function saveData() {
-            localStorage.setItem('familyPointsDataV8', JSON.stringify(appData));
+            localStorage.setItem('familyPointsDataV9', JSON.stringify(appData));
             updateButtonNames();
         }
 
@@ -205,7 +202,7 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים והקודים לברירת המחדל?')) {
-                localStorage.removeItem('familyPointsDataV8');
+                localStorage.removeItem('familyPointsDataV9');
                 location.reload();
             }
         }
@@ -256,6 +253,28 @@
                 msg.innerHTML = 'לוח בקרה הורים 👨‍👩‍👧‍👦';
                 
                 let html = `<div style="margin-bottom:20px;">
+                    <h3>אישורי משימות ומימושים ממתינים:</h3>`;
+
+                if (appData.pendingApprovals.length === 0) {
+                    html += `<p style="color:var(--text-light); font-size:0.9rem;">אין בקשות ממתינות כרגע.</p>`;
+                } else {
+                    appData.pendingApprovals.forEach((req, idx) => {
+                        html += `
+                            <div style="background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong>${appData.children[req.childKey].name}</strong> ביקש/ה לאשר: <strong>${req.title}</strong>
+                                    <div style="color:var(--warning); font-size:0.9rem;">+${req.points} נקודות</div>
+                                </div>
+                                <div style="display:flex; gap:5px;">
+                                    <button style="width:auto; padding:6px 10px; margin:0; background-color:var(--success);" onclick="approveRequest(${idx})">אשר</button>
+                                    <button style="width:auto; padding:6px 10px; margin:0; background-color:var(--danger);" onclick="rejectRequest(${idx})">דחה</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                html += `</div><div style="margin-bottom:20px; border-top: 2px solid #e2e8f0; padding-top:15px;">
                     <h3>ניהול ילדים, נקודות וקודים:</h3>`;
                 
                 for (let key in appData.children) {
@@ -264,7 +283,7 @@
                     html += `
                         <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px;">
                             <label style="font-size:0.85rem; color:var(--text-light);">שם הילד:</label>
-                            <input type="text" id="name-input-${key}" value="${child.name}" onchange="updateChildName('${key}', this.value)">
+                            <input type="text" value="${child.name}" onchange="updateChildName('${key}', this.value)">
                             
                             <label style="font-size:0.85rem; color:var(--text-light);">קוד אישי לילד (4 ספרות):</label>
                             <input type="text" maxlength="4" value="${childPin}" onchange="updatePin('${key}', this.value)" placeholder="הקש קוד חדש">
@@ -293,18 +312,6 @@
                         <input type="text" id="new-task-title" placeholder="שם המשימה">
                         <input type="number" id="new-task-pts" placeholder="כמות נקודות">
                         <button onclick="addNewTask()">הוסף משימה</button>
-                    </div>
-
-                    <div style="border-top: 2px solid #e2e8f0; padding-top: 15px; margin-bottom:20px;">
-                        <h3>הוספת בונוס מותאם אישית לילד:</h3>
-                        <select id="bonus-child-select">
-                            <option value="child1">${appData.children.child1.name}</option>
-                            <option value="child2">${appData.children.child2.name}</option>
-                            <option value="child3">${appData.children.child3.name}</option>
-                        </select>
-                        <input type="text" id="bonus-reason" placeholder="סיבת הבונוס (למשל: התנהגות מעולה)">
-                        <input type="number" id="bonus-pts" placeholder="כמות נקודות בונוס">
-                        <button style="background-color: var(--success);" onclick="giveCustomBonus()">הענק בונוס</button>
                     </div>
 
                     <button style="background-color: var(--danger); margin-top: 15px;" onclick="backToLogin()">התנתק</button>
@@ -351,7 +358,7 @@
                                     <strong>${task.title}</strong>
                                     <div style="color:var(--success); font-size:0.9rem;">+${task.points} נקודות</div>
                                 </div>
-                                <button style="width:auto; padding:8px 12px; margin:0;" onclick="completeTask('${task.title.replace(/'/g, "\\'")}', ${task.points})">בצעתי!</button>
+                                <button style="width:auto; padding:8px 12px; margin:0; background-color:var(--warning);" onclick="requestTaskApproval('${task.title.replace(/'/g, "\\'")}', ${task.points})">דווח ביצוע להורים</button>
                             </div>
                         `;
                     });
@@ -417,20 +424,26 @@
             renderDashboard();
         }
 
-        function giveCustomBonus() {
-            const childKey = document.getElementById('bonus-child-select').value;
-            const reason = document.getElementById('bonus-reason').value.trim();
-            const pts = parseInt(document.getElementById('bonus-pts').value);
-
-            if (!reason || isNaN(pts)) {
-                alert('נא למלא את סיבת הבונוס וכמות הנקודות.');
-                return;
-            }
-
-            appData.children[childKey].points += pts;
-            appData.children[childKey].history.push({ text: `בונוס מההורים: ${reason} (${new Date().toLocaleDateString('he-IL')})`, tag: `+${pts} נק'` });
+        function requestTaskApproval(taskTitle, pts) {
+            appData.pendingApprovals.push({ childKey: currentUser, title: taskTitle, points: pts });
             saveData();
-            alert('הבונוס הוענק בהצלחה!');
+            alert('דיווח הביצוע נשלח להורים לאישור!');
+        }
+
+        function approveRequest(index) {
+            let req = appData.pendingApprovals[index];
+            appData.children[req.childKey].points += req.points;
+            appData.children[req.childKey].history.push({ text: `אישור ביצוע משימה: ${req.title} (${new Date().toLocaleDateString('he-IL')})`, tag: `+${req.points} נק'` });
+            appData.pendingApprovals.splice(index, 1);
+            saveData();
+            alert('הבקשה אושרה והנקודות נוספו לילד!');
+            renderDashboard();
+        }
+
+        function rejectRequest(index) {
+            appData.pendingApprovals.splice(index, 1);
+            saveData();
+            alert('הבקשה נדחתה.');
             renderDashboard();
         }
 
@@ -444,14 +457,6 @@
             appData.tasks.push({ id: Date.now(), title: title, points: pts });
             saveData();
             alert('המשימה נוספה בהצלחה!');
-            renderDashboard();
-        }
-
-        function completeTask(taskTitle, pts) {
-            appData.children[currentUser].points += pts;
-            appData.children[currentUser].history.push({ text: `ביצוע משימה: ${taskTitle} (${new Date().toLocaleDateString('he-IL')})`, tag: `+${pts} נק'` });
-            saveData();
-            alert(`כל הכבוד! נוספו לך ${pts} נקודות.`);
             renderDashboard();
         }
 
