@@ -213,6 +213,9 @@
                 appData = val;
                 if (!appData.redemptionRequests) appData.redemptionRequests = [];
                 if (!appData.bonusMessage) appData.bonusMessage = { text: '', startTime: '', endTime: '', achievedAlerted: false };
+                for (let k in appData.children) {
+                    if (!appData.children[k].history) appData.children[k].history = [];
+                }
             } else {
                 appData = defaultData;
                 db.ref('familyData').set(defaultData);
@@ -513,8 +516,12 @@
                 `;
 
                 view.innerHTML = html;
-                let firstKey = Object.keys(appData.children)[0];
-                window.selectedHistChild = window.selectedHistChild || firstKey;
+                let childKeys = Object.keys(appData.children);
+                if (childKeys.length > 0) {
+                    if (!window.selectedHistChild || !appData.children[window.selectedHistChild]) {
+                        window.selectedHistChild = childKeys[0];
+                    }
+                }
                 renderParentHistory();
             } else {
                 let child = appData.children[currentUser];
