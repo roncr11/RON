@@ -151,7 +151,6 @@
             <h3>בחר משתמש לכניסה:</h3>
             <div class="user-select-grid" id="login-user-grid"></div>
             <button class="user-btn" style="width:100%; margin-top:5px;" onclick="selectUser('parent')">הורים 🔒</button>
-            <button style="background-color: var(--warning); margin-top: 15px;" onclick="resetAllData()">איפוס כללי (למצב ברירת מחדל)</button>
         </div>
 
         <div class="card" id="pin-card" style="display: none;">
@@ -191,8 +190,8 @@
         const defaultData = {
             pins: { child1: '1234', child2: '2701', child3: '' },
             children: {
-                child1: { name: 'אלון', points: 1, history: [] },
-                child2: { name: 'אורי', points: 1, history: [] },
+                child1: { name: 'אלון', points: 0, history: [] },
+                child2: { name: 'אורי', points: 0, history: [] },
                 child3: { name: 'אופיר', points: 0, history: [] }
             },
             tasks: [
@@ -217,8 +216,8 @@
                     if (!appData.children[k].history) appData.children[k].history = [];
                 }
             } else {
-                appData = defaultData;
-                db.ref('familyData').set(defaultData);
+                appData = JSON.parse(JSON.stringify(defaultData));
+                db.ref('familyData').set(appData);
             }
             updateLoginButtons();
             if (currentUser) {
@@ -227,11 +226,12 @@
         });
 
         function saveData() {
-            db.ref('familyData').set(appData);
-            updateLoginButtons();
-            if (currentUser) {
-                renderDashboard();
-            }
+            db.ref('familyData').set(appData).then(() => {
+                updateLoginButtons();
+                if (currentUser) {
+                    renderDashboard();
+                }
+            });
         }
 
         function updateLoginButtons() {
@@ -247,9 +247,9 @@
 
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                appData = defaultData;
+                appData = JSON.parse(JSON.stringify(defaultData));
                 saveData();
-                location.reload();
+                alert('האתר אופס בהצלחה למצב ברירת המחדל!');
             }
         }
 
@@ -415,6 +415,10 @@
                                     <input type="text" maxlength="6" id="parent-new-master-pin" value="${appData.parentPin}" placeholder="קוד הורים חדש">
                                     <button style="width:auto; margin:0;" onclick="parentUpdateMasterPin()">עדכן קוד הורים</button>
                                 </div>
+                            </div>
+
+                            <div style="margin-top:20px; border-top:2px dashed #cbd5e1; padding-top:15px;">
+                                <button style="background-color: var(--danger);" onclick="resetAllData()">⚠️ איפוס כללי (למצב ברירת מחדל)</button>
                             </div>
                         </div>
                     </div>
@@ -615,7 +619,7 @@
         function resetChildPoints(key) {
             if (confirm(`האם לאפס את הנקודות וההיסטוריה עבור ${appData.children[key].name}?`)) {
                 appData.children[key].points = 0;
-                appData.children[key].history.push({ text: `איפוס נקודות על ידי ההורים (${new Date().toLocaleDateString('he-IL')})`, tag: 'איפוס' });
+                appData.children[key].history = [];
                 saveData();
                 alert('הנקודות אופסו בהצלחה!');
             }
