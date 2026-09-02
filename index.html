@@ -9,6 +9,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ניהול נקודות משפחתי</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary: #4f46e5;
@@ -166,56 +171,67 @@
     </div>
 
     <script>
+        // הגדרות ה-Firebase שהתקבלו מהפרויקט שלך
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMEal2r4HVdaDWZ8AaLiRMpzk85fuOHdY",
+            authDomain: "family-app-e50f1.firebaseapp.com",
+            databaseURL: "https://family-app-e50f1-default-rtdb.firebaseio.com",
+            projectId: "family-app-e50f1",
+            storageBucket: "family-app-e50f1.appspot.com",
+            messagingSenderId: "647839783653",
+            appId: "1:647839783653:web:e898a827fec70b5601120c",
+            measurementId: "G-EQQMCBWSVG"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let currentUser = null;
-        
-        const STORAGE_KEY = 'familyPointsDataPermanent_v3';
-        let savedRawData = localStorage.getItem(STORAGE_KEY);
-        let appData;
+        let appData = null;
 
-        if (savedRawData) {
-            appData = JSON.parse(savedRawData);
-        } else {
-            appData = {
-                pins: { child1: '1234', child2: '2701', child3: '' },
-                children: {
-                    child1: { name: 'אלון', points: 1, history: [] },
-                    child2: { name: 'אורי', points: 1, history: [] },
-                    child3: { name: 'אופיר', points: 0, history: [] }
-                },
-                tasks: [
-                    { id: 1, title: 'סידור חדר', points: 3 },
-                    { id: 2, title: 'הכנת שיעורים', points: 2 },
-                    { id: 3, title: 'עזרה בהדחת כלים', points: 1 },
-                    { id: 4, title: 'הימנעות ממסכים בערב', points: 4 },
-                    { id: 5, title: 'הוצאת קופסת אוכל מהתיק', points: 1 }
-                ],
-                redemptionRequests: [],
-                bonusMessage: { text: '', startTime: '', endTime: '', achievedAlerted: false },
-                parentPin: '9999'
-            };
-        }
+        const defaultData = {
+            pins: { child1: '1234', child2: '2701', child3: '' },
+            children: {
+                child1: { name: 'אלון', points: 1, history: [] },
+                child2: { name: 'אורי', points: 1, history: [] },
+                child3: { name: 'אופיר', points: 0, history: [] }
+            },
+            tasks: [
+                { id: 1, title: 'סידור חדר', points: 3 },
+                { id: 2, title: 'הכנת שיעורים', points: 2 },
+                { id: 3, title: 'עזרה בהדחת כלים', points: 1 },
+                { id: 4, title: 'הימנעות ממסכים בערב', points: 4 },
+                { id: 5, title: 'הוצאת קופסת אוכל מהתיק', points: 1 }
+            ],
+            redemptionRequests: [],
+            bonusMessage: { text: '', startTime: '', endTime: '', achievedAlerted: false },
+            parentPin: '9999'
+        };
 
-        if (appData.pins && appData.pins.parent) {
-            appData.parentPin = appData.pins.parent;
-            delete appData.pins.parent;
-        }
-        if (!appData.parentPin) appData.parentPin = '9999';
-        if (!appData.pins) appData.pins = {};
-        if (!appData.tasks) appData.tasks = [];
-        if (!appData.redemptionRequests) appData.redemptionRequests = [];
-        if (!appData.bonusMessage) appData.bonusMessage = { text: '', startTime: '', endTime: '', achievedAlerted: false };
-        for (let k in appData.children) {
-            if (!appData.children[k].history) appData.children[k].history = [];
-        }
+        // האזנה לשינויים ב-Firebase בזמן אמת
+        db.ref('familyData').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if (val) {
+                appData = val;
+                if (!appData.redemptionRequests) appData.redemptionRequests = [];
+                if (!appData.bonusMessage) appData.bonusMessage = { text: '', startTime: '', endTime: '', achievedAlerted: false };
+            } else {
+                appData = defaultData;
+                db.ref('familyData').set(defaultData);
+            }
+            updateLoginButtons();
+            if (currentUser) {
+                renderDashboard();
+            }
+        });
 
         function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-            updateLoginButtons();
+            db.ref('familyData').set(appData);
         }
 
         function updateLoginButtons() {
             const grid = document.getElementById('login-user-grid');
-            if (!grid) return;
+            if (!grid || !appData || !appData.children) return;
             let html = '';
             for (let key in appData.children) {
                 let c = appData.children[key];
@@ -224,13 +240,10 @@
             grid.innerHTML = html;
         }
 
-        window.onload = function() {
-            updateLoginButtons();
-        };
-
         function resetAllData() {
             if (confirm('האם לאפס את כל הנתונים, הנקודות, ההיסטוריה והקודים למצב ברירת המחדל?')) {
-                localStorage.removeItem(STORAGE_KEY);
+                appData = defaultData;
+                saveData();
                 location.reload();
             }
         }
@@ -292,6 +305,7 @@
         }
 
         function renderDashboard() {
+            if (!appData) return;
             const msg = document.getElementById('welcome-msg');
             const view = document.getElementById('dynamic-view');
 
@@ -685,7 +699,7 @@
                 achievedAlerted: false
             };
             saveData();
-            alert('משימת הבונוס והתזמון נשמרו בהצלחה!');
+            alert('משימת הבונוס והתזמון נשמרו בהצלחה בענן!');
         }
 
         function clearBonusMessage() {
@@ -818,7 +832,7 @@
             });
 
             saveData();
-            alert('בקשת המימוש הוגשה בהצלחה להורים!');
+            alert('בקשת המימוש הוגשה בהצלחה להורים בענן!');
             renderDashboard();
         }
 
